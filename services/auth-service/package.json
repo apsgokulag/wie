@@ -1,0 +1,36 @@
+{
+  "name": "auth-service",
+  "version": "1.0.0",
+  "description": "Authentication service for WIE Creator",
+  "main": "src/app.js",
+  "scripts": {
+    "start": "node src/app.js",
+    "dev": "concurrently --kill-others-on-fail -n \"backend,frontend\" -c \"cyan,magenta\" \"nodemon src/app.js\" \"cd client && npm run dev\"",
+    "server": "nodemon src/app.js",
+    "client": "cd client && npm run dev",
+    "build": "cd client && npm run build",
+    "install-client": "cd client && npm install",
+    "install-all": "npm install && npm run install-client",
+    "dev-info": "echo \"🚀 Development servers starting...\" && echo \"📱 Frontend (React): http://localhost:5173\" && echo \"🔧 Backend (Express): http://localhost:3000\" && echo \"💡 Use http://localhost:5173 for development with hot reload!\""
+  },
+  "dependencies": {
+    "bcryptjs": "^3.0.2",
+    "cors": "^2.8.5",
+    "dotenv": "^16.5.0",
+    "express": "^4.21.2",
+    "express-validator": "^7.2.1",
+    "jsonwebtoken": "^9.0.2",
+    "mongoose": "^7.8.7"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2",
+    "nodemon": "^3.0.1"
+  },
+  "keywords": [
+    "auth",
+    "authentication",
+    "microservice"
+  ],
+  "author": "",
+  "license": "ISC"
+}

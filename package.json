@@ -1,0 +1,25 @@
+{
+  "name": "wie_creator",
+  "version": "1.0.0",
+  "description": "",
+  "main": "app.js",
+  "scripts": {
+    "dev": "concurrently \"npm run dev:gateway\" \"npm run dev:auth\" \"npm run dev:events\" \"npm run dev:chatbot\" \"npm run dev:messages\" \"npm run dev:settings\" \"npm run dev:bank\"",
+    "dev:gateway": "cd api-gateway && npm run dev",
+    "dev:auth": "cd services/auth-service && npm run dev",
+    "dev:events": "cd services/event-service && npm run dev",
+    "dev:chatbot": "cd services/chatbot-service && npm run dev",
+    "dev:messages": "cd services/message-service && npm run dev",
+    "dev:settings": "cd services/setting-service && npm run dev",
+    "dev:bank": "cd services/bank-service && npm run dev",
+    "install:all": "npm install && cd api-gateway && npm install && cd ../services/auth-service && npm install && cd client && npm install && cd ../../event-service && npm install && cd client && npm install && cd ../../chatbot-service && npm install && cd client && npm install && cd ../../message-service && npm install && cd client && npm install && cd ../../setting-service && npm install && cd client && npm install && cd ../../bank-service && npm install && cd client && npm install",
+    "build": "cd services/auth-service/client && npm run build && cd ../../event-service/client && npm run build && cd ../../chatbot-service/client && npm run build && cd ../../message-service/client && npm run build && cd ../../setting-service/client && npm run build && cd ../../bank-service/client && npm run build"
+  },
+  "dependencies": {
+    "concurrently": "^8.2.0"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs"
+}

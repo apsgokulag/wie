@@ -1,0 +1,17 @@
+{
+  "watch": [
+    "src",
+    "client/dist"
+  ],
+  "ext": "js,json,jsx",
+  "ignore": [
+    "node_modules",
+    "client/node_modules",
+    "*.test.js"
+  ],
+  "exec": "node src/app.js",
+  "env": {
+    "NODE_ENV": "development"
+  },
+  "delay": "1000"
+}
