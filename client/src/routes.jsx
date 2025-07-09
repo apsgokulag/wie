@@ -11,6 +11,9 @@ import AdminSignup from './pages/auth/AdminSignup';
 import OrganisationSignup from './pages/auth/OrganisationSignup';
 import OtpPage from './pages/auth/OtpPage';
 import Index from './pages/index'; // Assuming this is the main landing page
+import ForgotPassword from './pages/auth/ForgotPassword';
+import VerifyUser from './pages/auth/VerifyUser';
+import ResetPassword from './pages/auth/ResetPassword';
 const ProtectedRoute = ({ children, allowedRoles }) => {
   const { token, user } = useSelector((state) => state.auth);
 
@@ -39,6 +42,10 @@ const AppRoutes = () => {
       <Route path="/register" element={<RegisterPage />} />
       <Route path="/adminsignup" element={<AdminSignup />} />
       <Route path="/organisationsignup" element={<OrganisationSignup />} />
+      <Route path="/forgot-password" element={<ForgotPassword />} />
+      <Route path="/verify-user/:input" element={<VerifyUser />} />
+      <Route path="/reset-password/:input" element={<ResetPassword />} />
+      {/* Protected Routes */}
       <Route
         path="/home"
         element={
