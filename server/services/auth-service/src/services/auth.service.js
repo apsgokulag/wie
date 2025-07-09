@@ -8,24 +8,65 @@ import { sendSMSOTP } from '../utils/sendSMS.js';
 export const index = (req, res) => {
   res.json({ message: 'Welcome to the authentication service' }); 
 };
+const validateEmail = (email) => {
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  return emailRegex.test(email);
+};
+
+const validateContactNo = (contact_no) => {
+  const phoneRegex = /^[+]?[0-9]{10,15}$/;
+  return phoneRegex.test(contact_no);
+};
+
+const validatePassword = (password) => {
+  return password && password.length >= 6;
+};
+
+const validateName = (name) => {
+  return name && name.trim().length >= 2;
+};
 export const adminSignup = async (req, res) => {
   try {
-    console.log("hiiii")
     const { name, email, contact_no, password } = req.body;
-    if (!name || !email || !contact_no || !password) {
-      return res.status(400).json({ message: 'All fields required' });
+    if (!name || !validateName(name)) {
+      return res.status(400).json({ message: 'Name is required and must be at least 2 characters' });
     }
-    const exist = await User.findOne({ email });
+    if (!email || !validateEmail(email)) {
+      return res.status(400).json({ message: 'Valid email is required' });
+    }
+    if (!contact_no || !validateContactNo(contact_no)) {
+      return res.status(400).json({ message: 'Valid contact number is required (10-15 digits)' });
+    }
+    if (!password || !validatePassword(password)) {
+      return res.status(400).json({ message: 'Password is required and must be at least 6 characters' });
+    }
+    const exist = await User.findOne({ email: email, status: 'active' });
     if (exist) {
       return res.status(400).json({ message: 'Email already in use' });
     }
-    const contactExist = await User.findOne({ contact_no });
+    const contactExist = await User.findOne({ contact_no: contact_no, status: 'active' });
     if (contactExist) {
       return res.status(400).json({ message: 'Contact number already in use' });
     }
+    const existingEmail = await User.findOne({ email: email, status: 'unverified' });
+    if (existingEmail) {
+      const otp = generateOtp(); // Generate new OTP
+      await otpService.insertOTP(existingEmail._id, otp, 10); // Update OTP with new expiry
+      await sendEmail(existingEmail.email, otp);
+      await sendSMSOTP(existingEmail.contact_no, otp);
+      res.status(201).json({ message: 'Signup successfully. OTP sent to email and Contact number.' });
+    }
+    const existingContact_no = await User.findOne({ contact_no: contact_no, status: 'unverified' });
+    if(existingContact_no){
+      const otp = generateOtp(); // Generate new OTP
+      await otpService.insertOTP(existingContact_no._id, otp, 10); // Update OTP with new expiry
+      await sendEmail(existingContact_no.email, otp);
+      await sendSMSOTP(existingContact_no.contact_no, otp);
+      res.status(201).json({ message: 'Signup successfully. OTP sent to email and Contact number.' });
+    }
     const hashed = await hashPassword(password);
     const image = req.file ? req.file.filename : '';
-    const user = await User.create({ name, email, contact_no, password: hashed, image });
+    const user = await User.create({ name, email, contact_no, password: hashed, image, status: 'unverified', role: 'admin' });
     // Generate OTP (e.g., 6 digit)
     const otp = generateOtp(); // => '123456'
     // Save OTP to DB
@@ -34,7 +75,7 @@ export const adminSignup = async (req, res) => {
     await sendEmail(user.email, otp);
     // Send OTP via SMS
     await sendSMSOTP(user.contact_no, otp); // Assuming contact_no is a valid phone number
-    res.status(201).json({ message: 'Signup successfully. OTP sent to email and SMS.' });
+    res.status(201).json({ message: 'Signup successfully. OTP sent to email and Contact number.' });
   } catch (err) {
     console.error('Signup error:', err);
     res.status(500).json({ message: 'Signup failed' });
@@ -43,19 +84,50 @@ export const adminSignup = async (req, res) => {
 export const organisationSignup = async (req, res) => {
   try {
     const { name, email, contact_no, organisation_type, address, password } = req.body;
-    if (!name || !email || !contact_no || !organisation_type || !address || !password) {
-      return res.status(400).json({ message: 'All fields required' });
+    if (!name || !validateName(name)) {
+      return res.status(400).json({ message: 'Name is required and must be at least 2 characters' });
     }
-    const exist = await User.findOne({ email });
+    if (!email || !validateEmail(email)) {
+      return res.status(400).json({ message: 'Valid email is required' });
+    }
+    if (!contact_no || !validateContactNo(contact_no)) {
+      return res.status(400).json({ message: 'Valid contact number is required (10-15 digits)' });
+    }
+    const validOrgTypes = ['Private', 'Government', 'NGO', 'Educational', 'Healthcare', 'Non-profit', 'Other'];
+    if (!validOrgTypes.includes(organisation_type)) {
+      return res.status(400).json({ message: 'Invalid organisation type' });
+    }
+    if (!address || address.trim().length < 5) {
+      return res.status(400).json({ message: 'Address is required and must be at least 5 characters' });
+    }
+    if (!password || !validatePassword(password)) {
+      return res.status(400).json({ message: 'Password is required and must be at least 6 characters' });
+    }
+    const exist = await User.findOne({ email: email, status: 'active' });
     if (exist) {
-      return res.status(400).json({ message: 'Email already in use' }); 
+      return res.status(400).json({ message: 'Email already in use' });
     }
-    const contactExist = await User.findOne({ contact_no });
+    const contactExist = await User.findOne({ contact_no: contact_no, status: 'active' });
     if (contactExist) {
       return res.status(400).json({ message: 'Contact number already in use' });
     }
+    const existingEmail = await User.findOne({ email: email, status: 'unverified' });
+    if (existingEmail) {
+      const otp = generateOtp(); // Generate new OTP
+      await otpService.insertOTP(existingEmail._id, otp, 10); // Update OTP with new expiry
+      await sendEmail(existingEmail.email, otp);
+      await sendSMSOTP(existingEmail.contact_no, otp);
+      res.status(201).json({ message: 'Signup successfully. OTP sent to email and Contact number.' });
+    }
+    const existingContact_no = await User.findOne({ contact_no: contact_no, status: 'unverified' });
+    if(existingContact_no){
+      const otp = generateOtp(); // Generate new OTP
+      await otpService.insertOTP(existingContact_no._id, otp, 10); // Update OTP with new expiry
+      await sendEmail(existingContact_no.email, otp);
+      await sendSMSOTP(existingContact_no.contact_no, otp);
+      res.status(201).json({ message: 'Signup successfully. OTP sent to email and Contact number.' });
+    }
     const hashed = await hashPassword(password);
-
     const image = req.file ? req.file.filename : '';
     const user = await User.create({
       name,
@@ -134,6 +206,10 @@ export const verifyOTP = async (req, res) => {
      console.log(isValid)
     if (!isValid) {
       return res.status(400).json({ message: 'Invalid or expired OTP' });
+    }
+    if (user) {
+      user.status = "active";
+      await user.save();
     }
     res.status(200).json({ message: 'OTP verified successfully' });
   } catch (err) {
@@ -230,7 +306,7 @@ export const verifyUser = async (req, res) => {
     res.status(200).json({ 
       message: 'User verified successfully', 
       token: token,
-      userId: user._id // For debugging
+      userId: user._id.toString()
     });
   } catch (err) {
     console.error('Reset password error:', err);
