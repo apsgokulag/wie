@@ -10,7 +10,6 @@ const userSchema = new mongoose.Schema(
     },
     email: {
       type: String,
-      unique: true,
       required: true,
       lowercase: true,
     },
@@ -24,6 +23,11 @@ const userSchema = new mongoose.Schema(
         return this.role === 'organisation';
       },
       enum: ['Private', 'Government', 'NGO', 'Educational', 'Healthcare', 'Non-profit', 'Other']
+    },
+    status: {
+      type: String,
+      enum: ['unverified', 'active', 'blocked'],
+      default: 'unverified'
     },
     address: {
       type: String,
@@ -57,7 +61,24 @@ const userSchema = new mongoose.Schema(
     timestamps: true, 
   }
 );
+// Create partial unique indexes - only enforce uniqueness for 'active' users
+userSchema.index(
+  { email: 1 }, 
+  { 
+    unique: true, 
+    partialFilterExpression: { status: 'active' },
+    name: 'email_unique_active'
+  }
+);
 
+userSchema.index(
+  { contact_no: 1 }, 
+  { 
+    unique: true, 
+    partialFilterExpression: { status: 'active' },
+    name: 'contact_no_unique_active'
+  }
+);
 const User = mongoose.model('User', userSchema);
 
 export default User;
