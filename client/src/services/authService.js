@@ -51,18 +51,18 @@ export const forgotPassword = async (data) => {
     throw err;
   }
 };
-export const verifyUser = async (data) => {
+export const verifyUser = async (payload) => {
   try {
-    const res = await api.post('/auth/verify-user', data);
+    const res = await api.post('/auth/verify-user', payload);
     return res.data;
   } catch (err) {
     console.error('verifyUser error:', err);
     throw err;
   }
 };
-export const resetPassword = async (data) => {
+export const resetPassword = async (resetData) => {
   try {
-    const res = await api.post('/auth/reset-password', data);
+    const res = await api.post('/auth/reset-password', resetData);
     return res.data;
   } catch (err) {
     console.error('resetPassword error:', err);
