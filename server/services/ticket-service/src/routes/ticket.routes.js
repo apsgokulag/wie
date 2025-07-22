@@ -1,0 +1,11 @@
+import express from 'express';
+import {CreateGroup, createEvent, getEvents, getGroups, getUserGroupCapabilities  } from '../services/ticket.service.js';
+import { protect } from '../middlewares/auth.js';
+const router = express.Router();
+router.use(protect);
+router.post('/create-event', createEvent);
+router.post('/create-group', CreateGroup);
+router.get('/get-events', getEvents);
+router.get('/get-groups', getGroups);
+router.get('/user-group-capabilities', getUserGroupCapabilities);
+export default router;
