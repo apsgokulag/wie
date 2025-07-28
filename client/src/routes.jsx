@@ -14,6 +14,7 @@ import Index from './pages/index'; // Assuming this is the main landing page
 import ForgotPassword from './pages/auth/ForgotPassword';
 import VerifyUser from './pages/auth/VerifyUser';
 import ResetPassword from './pages/auth/ResetPassword';
+import CreateEvent from './pages/ticket/CreateEvent';
 const ProtectedRoute = ({ children, allowedRoles }) => {
   const { token, user } = useSelector((state) => state.auth);
 
@@ -59,6 +60,14 @@ const AppRoutes = () => {
         element={
           <ProtectedRoute allowedRoles={['admin', 'organisation']}>
             <ProfilePage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/ticket/create-event"
+        element={
+          <ProtectedRoute allowedRoles={['organisation', 'admin']}>
+            <CreateEvent />
           </ProtectedRoute>
         }
       />
