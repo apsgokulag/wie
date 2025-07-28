@@ -157,16 +157,28 @@ export const login = async (req, res) => {
   try {
     console.log("hiiii")
     const { email, password } = req.body;
+    if (!email || !password) {
+      return res.status(400).json({ message: 'Email and password are required' });
+    }
+    
     const user = await User.findOne({ email });
-    if (!user) return res.status(400).json({ message: 'Invalid email'});
+    if (!user) {
+      return res.status(400).json({ message: 'Invalid email or password' });
+    }
+    
     const match = await comparePassword(password, user.password);
-    if (!match) return res.status(400).json({ message: 'Invalid email or password' });
-    if (user.isBlocked) return res.status(403).json({ message: 'User is blocked' });
+    if (!match) {
+      return res.status(400).json({ message: 'Invalid password' });
+    }
+    if (user.isBlocked) {
+      return res.status(403).json({ message: 'User is blocked' });
+    }
+    if (user.status === 'unverified') {
+      return res.status(400).json({ message: 'Please verify your account first' });
+    }
     const token = generateToken(user);
     const { password: _, ...userData } = user.toObject();
     res.json({ token, user: userData });
-    await sendEmail(user.email, token);
-    res.status(200).json({ message: 'Password reset email sent' });
   } catch (error) {
     console.error('Login error:', error);
     res.status(500).json({ message: 'Login failed' });
@@ -279,6 +291,56 @@ export const forgotPassword = async (req, res) => {
     res.status(500).json({ message: 'Server error during forgot password' });
   }
 };
+export const resendOtp = async (req, res) => {
+  try {
+    const input = req.body;
+    
+    console.log('Resend OTP request body:', input);
+    
+    // Validate input
+    if (!input || (!input.email && !input.contact_no)) {
+      return res.status(400).json({ 
+        message: 'Please provide either email or contact number' 
+      });
+    }
+
+    // Find user by either email or contact_no
+    let user;
+    if (input.email) {
+      user = await User.findOne({ email: input.email });
+    } else if (input.contact_no) {
+      user = await User.findOne({ contact_no: input.contact_no });
+    }
+
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    // Generate new OTP
+    const otp = generateOtp();
+
+    // Save new OTP to DB with expiry (replace existing OTP)
+    await otpService.insertOTP(user.id, otp, 10); // 10 minutes expiry
+
+    // Send OTP to the provided input
+    if (input.email) {
+      await sendEmail(input.email, otp);
+    } else if (input.contact_no) {
+      await sendSMSOTP(input.contact_no, otp);
+    }
+
+    res.status(200).json({ 
+      message: 'OTP resent successfully',
+      success: true 
+    });
+  } catch (err) {
+    console.error('Resend OTP error:', err);
+    res.status(500).json({ 
+      message: 'Server error during OTP resend',
+      success: false 
+    });
+  }
+};
 export const verifyUser = async (req, res) => {
   try {
     const { input, otp } = req.body;
@@ -336,8 +398,7 @@ export const resetPassword = async (req, res) => {
       }
       user = userByString;
     }
-
-    // Hash and update password
+    user.status = 'active';
     const hashedPassword = await hashPassword(newPassword);
     user.password = hashedPassword;
     await user.save();
@@ -348,4 +409,3 @@ export const resetPassword = async (req, res) => {
     res.status(500).json({ message: 'Server error during password reset' });
   }
 };
-
