@@ -51,7 +51,7 @@ export const adminSignup = async (req, res) => {
     const existingEmail = await User.findOne({ email: email, status: 'unverified' });
     if (existingEmail) {
       const otp = generateOtp(); // Generate new OTP
-      await otpService.insertOTP(existingEmail._id, otp, 10); // Update OTP with new expiry
+      await otpService.insertOTP(existingEmail._id, otp, 1); // 1 minute OTP with new expiry
       await sendEmail(existingEmail.email, otp);
       await sendSMSOTP(existingEmail.contact_no, otp);
       res.status(201).json({ message: 'Signup successfully. OTP sent to email and Contact number.' });
@@ -276,7 +276,7 @@ export const forgotPassword = async (req, res) => {
     const otp = generateOtp(); // e.g., '123456'
 
     // Save OTP to DB with expiry
-    await otpService.insertOTP(user.id, otp, 10); // 10 minutes expiry
+    await otpService.insertOTP(user.id, otp, 1); // 1 minute expiry
 
     // Send OTP only to the provided input (email or contact_no)
     if (input.email) {
@@ -319,8 +319,8 @@ export const resendOtp = async (req, res) => {
     // Generate new OTP
     const otp = generateOtp();
 
-    // Save new OTP to DB with expiry (replace existing OTP)
-    await otpService.insertOTP(user.id, otp, 10); // 10 minutes expiry
+    // Save new OTP to DB with expiry (this will delete existing OTPs automatically)
+    await otpService.insertOTP(user.id, otp, 1); // 1 minute expiry
 
     // Send OTP to the provided input
     if (input.email) {
@@ -330,7 +330,7 @@ export const resendOtp = async (req, res) => {
     }
 
     res.status(200).json({ 
-      message: 'OTP resent successfully',
+      message: 'New OTP sent successfully. Previous OTP has been invalidated.',
       success: true 
     });
   } catch (err) {
@@ -341,29 +341,42 @@ export const resendOtp = async (req, res) => {
     });
   }
 };
+
 export const verifyUser = async (req, res) => {
   try {
     const { input, otp } = req.body;
+    
     if (!input || (!input.email && !input.contact_no)) {
       return res.status(400).json({ 
         message: 'Please provide either email or contact number' 
       });
     }
-    // Find user by either email or contact_no (single query)
+
+    if (!otp) {
+      return res.status(400).json({ 
+        message: 'Please provide OTP' 
+      });
+    }
+
+    // Find user by either email or contact_no
     let user;
     if (input.email) {
       user = await User.findOne({ email: input.email });
     } else if (input.contact_no) {
       user = await User.findOne({ contact_no: input.contact_no });
     }
+
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
     }
-    // Verify OTP
-    const isValid = await otpService.verifyOtp(user.id, otp);
-    if (!isValid) {
-      return res.status(400).json({ message: 'Invalid or expired OTP' });
+
+    // Verify OTP with enhanced validation
+    const verificationResult = await otpService.verifyOtp(user.id, otp);
+    
+    if (!verificationResult.isValid) {
+      return res.status(400).json({ message: verificationResult.message });
     }
+
     const token = generateToken(user.id);
     res.status(200).json({ 
       message: 'User verified successfully', 
@@ -371,8 +384,10 @@ export const verifyUser = async (req, res) => {
       userId: user._id.toString()
     });
   } catch (err) {
-    console.error('Reset password error:', err);
-    res.status(500).json({ message: 'Server error during password reset'});
+    console.error('Verify user error:', err);
+    res.status(500).json({ 
+      message: 'Server error during user verification'
+    });
   }
 };
 export const resetPassword = async (req, res) => {
