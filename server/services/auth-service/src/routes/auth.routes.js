@@ -1,5 +1,5 @@
 import express from 'express';
-import {index, login, adminSignup,organisationSignup,getUserById,verifyOTP,logout,forgotPassword,verifyUser,resetPassword } from '../services/auth.service.js';
+import {index, login, adminSignup,organisationSignup,getUserById,verifyOTP,logout,forgotPassword,resendOtp,verifyUser,resetPassword } from '../services/auth.service.js';
 import upload from '../middlewares/upload.js';
 import { protect } from '../middlewares/auth.js';
 const router = express.Router();
@@ -12,6 +12,7 @@ router.get('/users/:id', getUserById);
 router.get('/index', index);
 router.post('/verify-otp', verifyOTP);
 router.post('/forgot-password', forgotPassword);
+router.post('/resend-otp', resendOtp);
 router.post('/verify-user', verifyUser);
 router.post('/reset-password', resetPassword);
 export default router;
