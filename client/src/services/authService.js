@@ -51,6 +51,16 @@ export const forgotPassword = async (data) => {
     throw err;
   }
 };
+export const resendOtp = async (data) => {
+  try {
+    const res = await api.post('/auth/resend-otp', data); // data = { email } or { contact_no }
+    return res.data;
+  } catch (err) {
+    console.error('resendOtp error:', err);
+    throw err;
+  }
+}
+
 export const verifyUser = async (payload) => {
   try {
     const res = await api.post('/auth/verify-user', payload);
