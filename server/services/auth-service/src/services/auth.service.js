@@ -208,21 +208,28 @@ export const getUserById = async (req, res) => {
 
 export const verifyOTP = async (req, res) => {
   const { email, contact_no, otp } = req.body;
-    console.log(email, contact_no, otp)
+  console.log(email, contact_no, otp);
   try {
-    const user = await User.findOne({ email, contact_no });
-     console.log(user)
-    if (!user) return res.status(404).json({ message: 'User not found' });
-
-    const isValid = await otpService.verifyOtp(user._id, otp); // Pass user._id, not email
-     console.log(isValid)
+    let user = null; // Declare user outside if-else
+    // If it's a valid email, search by email
+    if (validateEmail(email)) {
+      user = await User.findOne({ email: email });
+    } 
+    // Else if contact number is provided, search by contact_no
+    else if (contact_no) {
+      user = await User.findOne({ contact_no: contact_no });
+    }
+    console.log(user);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+    const isValid = await otpService.verifyOtp(user._id, otp);
+    console.log(isValid);
     if (!isValid) {
       return res.status(400).json({ message: 'Invalid or expired OTP' });
     }
-    if (user) {
-      user.status = "active";
-      await user.save();
-    }
+    user.status = "active";
+    await user.save();
     res.status(200).json({ message: 'OTP verified successfully' });
   } catch (err) {
     console.error('OTP verification error:', err);
@@ -417,8 +424,19 @@ export const resetPassword = async (req, res) => {
     const hashedPassword = await hashPassword(newPassword);
     user.password = hashedPassword;
     await user.save();
+    const token = generateToken(userId);
     console.log('Password updated successfully for user:', user._id);
-    res.status(200).json({ message: 'Password reset successfully' });
+    res.status(200).json({ 
+      message: 'Password reset successfully',
+      token,
+      user: {
+        id: user._id,
+        email: user.email,
+        name: user.name,
+        role: user.role,
+        status: user.status
+      }
+    });
   } catch (err) {
     console.error('Reset password error:', err);
     res.status(500).json({ message: 'Server error during password reset' });
