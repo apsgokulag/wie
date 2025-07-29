@@ -301,7 +301,7 @@ const OrganisationSignup = () => {
           </div>
         </main>
 
-        <footer className=" bottom-0 left-0 w-full p-6 flex justify-center md:justify-start md:px-12 items-center gap-4 text-white/80">
+        <footer className=" bottom-0 left-0 w-full p-6 flex py-2 justify-center md:justify-start md:px-12 items-center gap-4 text-white/80">
           <span className="text-sm">Follow us on:</span>
           <div className="flex gap-3">
             <Link
