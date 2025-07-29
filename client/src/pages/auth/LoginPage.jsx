@@ -151,7 +151,7 @@ const LoginPage = () => {
               <div className="flex justify-between items-center text-xs sm:text-sm text-white/60">
                 <label className="flex items-center gap-2 cursor-pointer select-none">
                   <input type="checkbox" className="h-4 w-4 bg-transparent border-white/30 rounded text-purple-500 focus:ring-purple-500 focus:ring-offset-0" />
-                  Remember me
+                  Remember mee
                 </label>
                 <Link to="/forgot-password" className="hover:underline hover:text-white">Forgot password?</Link>
               </div>
