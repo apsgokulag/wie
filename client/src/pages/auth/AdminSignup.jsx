@@ -13,8 +13,8 @@ import bg from "../../assets/background.png";
 import { FaFacebookF, FaXTwitter } from "react-icons/fa6";
 import { RiInstagramFill } from "react-icons/ri";
 
-
 const RegisterPage = () => {
+  // --- Component State and Logic ---
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
     name: "",
@@ -22,13 +22,25 @@ const RegisterPage = () => {
     contact_no: "",
     password: "",
     confirm: "",
+    image: null,
   });
+  const [preview, setPreview] = useState(null);
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
   const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormData({ ...formData, [name]: value });
+    const { name, value, files } = e.target;
+    if (name === "image") {
+      const file = files[0];
+      setFormData({ ...formData, image: file });
+      if (file) {
+        setPreview(URL.createObjectURL(file));
+      } else {
+        setPreview(null);
+      }
+    } else {
+      setFormData({ ...formData, [name]: value });
+    }
   };
 
   const handleClear = () => {
@@ -38,7 +50,9 @@ const RegisterPage = () => {
       contact_no: "",
       password: "",
       confirm: "",
+      image: null,
     });
+    setPreview(null);
     setError("");
   };
 
@@ -51,14 +65,17 @@ const RegisterPage = () => {
     }
     setIsLoading(true);
 
+    const data = new FormData();
+    data.append("name", formData.name);
+    data.append("email", formData.email);
+    data.append("contact_no", formData.contact_no);
+    data.append("password", formData.password);
+    if (formData.image) {
+      data.append("image", formData.image);
+    }
+
     try {
-      // Assuming registerAdmin can handle a JSON object
-      await registerAdmin({
-        name: formData.name,
-        email: formData.email,
-        contact_no: formData.contact_no,
-        password: formData.password,
-      });
+      await registerAdmin(data);
       navigate("/otp", {
         state: { email: formData.email, contact_no: formData.contact_no },
       });
@@ -248,7 +265,7 @@ const RegisterPage = () => {
           </div>
         </main>
 
-        <footer className="absolute bottom-0 left-0 w-full p-6 flex justify-center md:justify-start md:px-12 items-center gap-4 text-white/80">
+        <footer className=" bottom-0 left-0 w-full p-6 flex justify-center md:justify-start md:px-12 items-center gap-4 text-white/80">
           <span className="text-sm">Follow us on:</span>
           <div className="flex gap-3">
             <Link

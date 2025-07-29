@@ -1,8 +1,8 @@
 import React, { useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { registerOrganisation } from "../../services/authService";
 
 // --- Icon Imports ---
-// Import SVGs as URLs for use in <img> tags
-
 import FullnameIcon from "../../assets/user.svg";
 import EmailIcon from "../../assets/email.svg";
 import PhoneIcon from "../../assets/phone.svg";
@@ -10,20 +10,10 @@ import AddressIcon from "../../assets/address.svg";
 import PasswordInputIcon from "../../assets/password.svg";
 import Top from "../../assets/org_top.svg";
 import Logo from "../../assets/wie_logo.svg";
-
-
 import bg from "../../assets/background.png";
-
-// Import icons from the react-icons library
 import { FaFacebookF, FaXTwitter } from "react-icons/fa6";
 import { RiInstagramFill } from "react-icons/ri";
 import { MdKeyboardArrowDown } from "react-icons/md";
-import { useNavigate } from "react-router-dom";
-import { registerOrganisation } from "../../services/authService";
-
-
-
-
 
 const OrganisationSignup = () => {
   // --- Component State and Logic ---
@@ -152,7 +142,7 @@ const OrganisationSignup = () => {
                   required
                   value={formData.organisation_type}
                   onChange={handleChange}
-                  className="w-full appearance-none bg-white/5 border border-white/20 rounded-lg py-3 pl-4 pr-12 focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all text-white/60 data-[value='']:text-white"
+                  className="w-full bg-white/5 border border-white/20 rounded-lg py-3 pl-4 pr-12 focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all placeholder:text-white/40"
                   data-value={formData.organisation_type}
                 >
                   <option value="" disabled>
@@ -311,7 +301,7 @@ const OrganisationSignup = () => {
           </div>
         </main>
 
-        <footer className="absolute bottom-0 left-0 w-full p-6 flex justify-center md:justify-start md:px-12 items-center gap-4 text-white/80">
+        <footer className=" bottom-0 left-0 w-full p-6 flex justify-center md:justify-start md:px-12 items-center gap-4 text-white/80">
           <span className="text-sm">Follow us on:</span>
           <div className="flex gap-3">
             <Link
