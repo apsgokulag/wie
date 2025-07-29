@@ -146,7 +146,7 @@ const LoginPage = () => {
           </div>
         </main>
         
-        <footer className="absolute bottom-0 left-0 w-full p-6 flex justify-center md:justify-start md:px-12 items-center gap-4 text-white/80">
+        <footer className="absolute bottom-0 left-0 w-full p-6 py-2 flex justify-center md:justify-start md:px-12 items-center gap-4 text-white/80">
             <span className="text-sm">Follow us on:</span>
             <div className="flex gap-3">
                  <Link to="#" className="w-8 h-8 flex items-center justify-center rounded-full bg-[#5E5CE6] hover:bg-opacity-80 text-white transition-colors"><FaXTwitter/></Link>
