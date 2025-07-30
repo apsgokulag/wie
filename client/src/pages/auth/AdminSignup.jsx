@@ -3,11 +3,11 @@ import { Link, useNavigate } from "react-router-dom";
 import { registerAdmin } from "../../services/authService";
 
 // --- Icon Imports ---
-import UserTopIcon from "../../assets/user_top.svg";
-import FullnameIcon from "../../assets/user.svg";
-import EmailIcon from "../../assets/email.svg";
-import PhoneIcon from "../../assets/phone.svg";
-import PasswordInputIcon from "../../assets/password.svg";
+import UserTopIcon from "../../assets/auth/user_top.svg";
+import FullnameIcon from "../../assets/auth/user.svg";
+import EmailIcon from "../../assets/auth/email.svg";
+import PhoneIcon from "../../assets/auth/phone.svg";
+import PasswordInputIcon from "../../assets/auth/password.svg";
 import Logo from "../../assets/wie_logo.svg";
 import bg from "../../assets/background.png";
 import { FaFacebookF, FaXTwitter } from "react-icons/fa6";
