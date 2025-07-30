@@ -21,7 +21,7 @@ app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 app.use(cors({ origin: 'http://localhost:5173', credentials: true }));
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 // Routes
-app.use('/api/tickets', ticketRoutes);
+app.use('/api/ticket', ticketRoutes);
 // Start server and services
 const PORT = process.env.PORT || 5003;
 const startServer = async () => {
