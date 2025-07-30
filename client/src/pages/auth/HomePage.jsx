@@ -60,6 +60,26 @@ const HomePage = () => {
             Profile
           </Link>
         )}
+        {user && (
+        <>
+        <Link
+          to="/ticket/create-group"
+          className="px-5 py-2 bg-gray-600 text-white rounded hover:bg-gray-700"
+        >
+          Create Event
+        </Link>
+        </>
+        )}
+        {user && (
+        <>
+        <Link
+          to="/ticket/groups"
+          className="px-5 py-2 bg-gray-600 text-white rounded hover:bg-gray-700"
+        >
+          View Group
+        </Link>
+        </>
+        )}
         {user.role === 'admin' && (
           <>
             <Link
