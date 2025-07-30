@@ -3,12 +3,12 @@ import { Link, useNavigate } from "react-router-dom";
 import { registerOrganisation } from "../../services/authService";
 
 // --- Icon Imports ---
-import FullnameIcon from "../../assets/user.svg";
-import EmailIcon from "../../assets/email.svg";
-import PhoneIcon from "../../assets/phone.svg";
-import AddressIcon from "../../assets/address.svg";
-import PasswordInputIcon from "../../assets/password.svg";
-import Top from "../../assets/org_top.svg";
+import FullnameIcon from "../../assets/auth/user.svg";
+import EmailIcon from "../../assets/auth/email.svg";
+import PhoneIcon from "../../assets/auth/phone.svg";
+import AddressIcon from "../../assets/auth/address.svg";
+import PasswordInputIcon from "../../assets/auth/password.svg";
+import Top from "../../assets/auth/org_top.svg";
 import Logo from "../../assets/wie_logo.svg";
 import bg from "../../assets/background.png";
 import { FaFacebookF, FaXTwitter } from "react-icons/fa6";

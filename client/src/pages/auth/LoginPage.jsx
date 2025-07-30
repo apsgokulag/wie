@@ -5,10 +5,10 @@ import { loginSuccess, setUser } from '../../features/auth/authSlice';
 import { loginUser } from '../../services/authService';
 
 // --- Icon Imports ---
-import UserTopIcon from '../../assets/user_top.svg';
-import UserInputIcon from '../../assets/user.svg';
+import UserTopIcon from '../../assets/auth/user_top.svg';
+import UserInputIcon from '../../assets/auth/user.svg';
 import Logo from '../../assets/wie_logo.svg';
-import PasswordInputIcon from '../../assets/password.svg';
+import PasswordInputIcon from '../../assets/auth/password.svg';
 import bg from "../../assets/background.png";
 import { FaFacebookF,FaXTwitter } from "react-icons/fa6";
 import { RiInstagramFill } from "react-icons/ri";
@@ -17,7 +17,7 @@ const LoginPage = () => {
   // --- Component State and Logic ---
   const dispatch = useDispatch();
   const navigate = useNavigate();
-  const [formData, setFormData] = useState({ email: '', password: '' });
+  const [formData, setFormData] = useState({ identifier: '', password: '' });
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
@@ -43,7 +43,7 @@ const LoginPage = () => {
   };
 
   const handleClear = () => {
-    setFormData({ email: '', password: '' });
+    setFormData({ identifier: '', password: '' });
     setError('');
   }
 
@@ -80,9 +80,9 @@ const LoginPage = () => {
               {/* Email Input */}
               <div className="relative flex items-center">
                 <input
-                  type="email"
-                  name="email"
-                  value={formData.email}
+                  type="text"
+                  name="identifier"
+                  value={formData.identifier}
                   onChange={handleChange}
                   required
                   placeholder="Username, Email or Contact"
