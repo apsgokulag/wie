@@ -9,7 +9,7 @@ const groupSchema = new mongoose.Schema(
       required: function() {
         return this.grp_type === 'organisation';
       },
-      enum: ['Private', 'Government', 'NGO', 'Educational', 'Healthcare', 'Non-profit', 'Other']
+      enum: ['Private Limited', 'Public Limited','LLP', 'Government', 'NGO', 'Educational', 'Healthcare', 'Non-profit','Trust','Society', 'Other']
     },
     email: { type: String, required: true },
     contact_no: {
