@@ -2,33 +2,33 @@ import mongoose from 'mongoose';
 
 // Guest Schema
 const guestSchema = new mongoose.Schema({
-  guest_name: { type: String, required: true },
-  guest_profile: { type: String, required: true }, // Image URL
-  guest_link: { type: String, required: true }, // Social media or website link
+  guest_name: { type: String },
+  guest_profile: { type: String }, // Image URL
+  guest_link: { type: String }, // Social media or website link
 });
 
 // Guide Schema
 const guideSchema = new mongoose.Schema({
-  guide_name: { type: String, required: true },
-  guide_profile: { type: String, required: true }, // Image URL
-  guide_link: { type: String, required: true }, // Contact or profile link
+  guide_name: { type: String },
+  guide_profile: { type: String }, // Image URL
+  guide_link: { type: String }, // Contact or profile link
 });
 
 // Ticket Type Schema
 const ticketTypeSchema = new mongoose.Schema({
-  ticket_type: { type: String, required: true },
-  ticket_price: { type: Number, required: true },
-  ticket_photo: { type: String, required: true }, // Image URL
-  max_capacity: { type: Number, required: true },
+  ticket_type: { type: String },
+  ticket_price: { type: Number },
+  ticket_photo: { type: String }, // Image URL
+  max_capacity: { type: Number },
   seating_arrangement: { type: Boolean, default: false },
 });
 
 // Banking Details Schema
 const bankingDetailsSchema = new mongoose.Schema({
-  bank_acc_type: { type: String, required: true },
-  bank_acc_no: { type: String, required: true },
-  bank_ifsc: { type: String, required: true },
-  bank_acc_holder: { type: String, required: true },
+  bank_acc_type: { type: String },
+  bank_acc_no: { type: String },
+  bank_ifsc: { type: String },
+  bank_acc_holder: { type: String },
 });
 
 // Sub Event Schema (for add-on events)
@@ -46,7 +46,7 @@ const subEventSchema = new mongoose.Schema({
   },
   
   // Date and Time
-  event_date_type: { type: String, enum: ['one-day', 'multi-day', 'specific-dates'], required: true },
+  event_date_type: { type: String, enum: ['one-day', 'multi-day', 'specific-dates'], required: false },
   start_date: { type: Date, required: true },
   end_date: { type: Date },
   start_time: { type: String, required: true },
@@ -96,7 +96,7 @@ const ticketSchema = new mongoose.Schema({
   },
   
   // Date and Time
-  event_date_type: { type: String, enum: ['one-day', 'multi-day', 'specific-dates'], required: false },
+  event_date_type: { type: String, enum: ['one-day', 'multi-day', 'specific-dates'], required: true },
   start_date: { type: Date, required: false },
   end_date: { type: Date },
   start_time: { type: String, required: false },
@@ -143,21 +143,17 @@ const ticketSchema = new mongoose.Schema({
     banking_tickets: { type: Boolean, default: false },
     terms_conditions: { type: Boolean, default: false },
   },
-  
   // Terms and Conditions (Company provided)
   terms_accepted: { type: Boolean, default: false },
   terms_accepted_at: { type: Date },
   company_terms_version: { type: String }, // Track which version of terms was accepted
-  
 }, {
   timestamps: true
 });
-
 // Indexes for better performance
 ticketSchema.index({ groupId: 1, userId: 1 });
 ticketSchema.index({ event_status: 1 });
 ticketSchema.index({ start_date: 1 });
 ticketSchema.index({ event_category: 1, event_subcategory: 1 });
-
 const Ticket = mongoose.model('Ticket', ticketSchema);
 export default Ticket;
