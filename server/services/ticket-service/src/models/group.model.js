@@ -32,7 +32,7 @@ const groupSchema = new mongoose.Schema(
     pan_no: { type: String, required: true },
     userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User'},
     id_proof: { type: String, required: true },
-    bank_check: { type: String, required: false },
+
     company_certificate: { 
       type: String,
       required: function() {
