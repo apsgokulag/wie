@@ -11,7 +11,6 @@ export const CreationGroup = async (formData) => {
 export const getUserGroupCapabilities = async () => {
   try {
     const response = await api.get("ticket/user-group-capabilities");
-    console.log("User group capabilities:", response.data); // Debug log
     return response.data;
   } catch (error) {
     throw error;
@@ -25,3 +24,83 @@ export const getGroups = async () => {
     throw error;
   }
 };
+export const createTicketBasicInfo = async (formData) => {
+  try {
+    const response = await api.post(`ticket/create-event/${formData.groupId}`, formData);
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
+}
+export const updateTicketMedia = async (formData) => {
+  try {
+    const response = await api.post("ticket/update-ticket-media", formData);
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
+}
+export const updateTicketAddOns = async (formData) => {
+  try {
+    const response = await api.post("ticket/ticket-addons", formData);
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
+}
+export const updateTicketDetails = async (formData) => {
+  try {
+    const response = await api.post("ticket/update-ticket-details", formData);
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
+}
+export const updateTicketTerms = async (formData) => {
+  try {
+    const response = await api.post("ticket/ticket-terms", formData);
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
+}
+export const submitTicket = async (formData) => {
+  try {
+    const response = await api.post("ticket/submit-ticket", formData);
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
+}
+export const viewTickets = async () => {
+  try {
+    const response = await api.get("ticket/view-tickets");
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
+}
+export const getAllGroupTicketId = async () => {
+  try {
+    const response = await api.get("ticket/get-group-tickets");
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
+}
+export const getTicketById = async (ticketId) => {
+  try {
+    const response = await api.get(`ticket/get-ticket/${ticketId}`);
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
+}
+export const deleteTicket = async (ticketId) => {
+  try {
+    const response = await api.delete("ticket/delete-ticket", { data: { ticketId } });
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
+}
