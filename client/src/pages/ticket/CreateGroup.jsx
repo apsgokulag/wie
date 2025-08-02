@@ -323,7 +323,17 @@ const CreateGroup = () => {
           </div>
 
           <div className="form-row">
-
+            <div className="form-group">
+              <label htmlFor="bank_check">Bank Check Details</label>
+              <input
+                type="text"
+                id="bank_check"
+                name="bank_check"
+                value={formData.bank_check}
+                onChange={handleInputChange}
+                placeholder="Enter bank check details (optional)"
+              />
+            </div>
 
             {formData.grp_type === 'organisation' && (
               <div className="form-group">
