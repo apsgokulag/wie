@@ -1,8 +1,9 @@
 import express from 'express';
-import {CreateGroup, createTicketBasicInfo, getGroups, getUserGroupCapabilities,updateTicketMedia,updateTicketAddOns,updateTicketDetails,updateTicketTerms,submitTicket,getAllGroupTicketId,getTicketById,deleteTicket,viewTickets } from '../services/ticket.service.js';
+import {getUserData,CreateGroup, createTicketBasicInfo, getGroups, getUserGroupCapabilities,updateTicketMedia,updateTicketAddOns,updateTicketDetails,updateTicketTerms,submitTicket,getAllGroupTicketId,getTicketById,deleteTicket,viewTickets } from '../services/ticket.service.js';
 import { protect } from '../middlewares/auth.js';
 const router = express.Router();
 router.use(protect);
+router.get('/get-user-data',getUserData);
 router.post('/create-event/:groupId', createTicketBasicInfo);
 router.post('/create-group', CreateGroup);
 router.get('/get-groups', getGroups);
