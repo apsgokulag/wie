@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { CreationGroup, getUserGroupCapabilities } from '../../services/ticketService';
+import { CreationGroup, getUserGroupCapabilities, getUserData } from '../../services/ticketService';
 import WieLogo from '../../assets/Event/WieLogo.svg';
 import BankIcon from '../../assets/Event/BankIcon.svg';
 import InfoIcon from '../../assets/Event/InfoIcon.svg';
@@ -12,7 +12,6 @@ import TcIcon from '../../assets/Event/T&cIcon.svg';
 import LightIcon from '../../assets/Event/LightIcon.svg';
 import DarkIcon from '../../assets/Event/DarkIcon.svg';
 import BackIcon from '../../assets/Event/BackIcon.svg';
-
 // CSS for placeholders, which will be injected based on the theme
 const darkThemeStyles = `
   .dark input::placeholder,
@@ -54,6 +53,7 @@ const CreateGroup = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [capabilities, setCapabilities] = useState(null);
+  const [userData, setUserData] = useState(null);
   const [darkMode, setDarkMode] = useState(true);
   const [filePreviews, setFilePreviews] = useState({});
   const [hasGst, setHasGst] = useState(''); // Separate state for GST registration question
@@ -90,6 +90,7 @@ const CreateGroup = () => {
 
   useEffect(() => {
     fetchUserCapabilities();
+    fetchUserData();
   }, []);
 
   const fetchUserCapabilities = async () => {
@@ -101,6 +102,25 @@ const CreateGroup = () => {
       }
     } catch (error) {
       console.error('Error fetching capabilities:', error);
+    }
+  };
+  const fetchUserData = async () => {
+    try {
+      const response = await getUserData();
+      if (response && response.user) {
+        setUserData(response.user);
+        // Auto-fill form data with user data
+        setFormData(prev => ({
+          ...prev,
+          name: response.user.name || '',
+          email: response.user.email || '',
+          contact_no: response.user.contact_no || '',
+          address: response.user.address || '',
+          organisation_type: response.user.organisation_type || ''
+        }));
+      }
+    } catch (error) {
+      console.error('Error fetching user data:', error);
     }
   };
 
@@ -115,6 +135,36 @@ const CreateGroup = () => {
       setErrors(prev => ({
         ...prev,
         [name]: ''
+      }));
+    }
+  };
+
+  const handleGroupTypeChange = (e) => {
+    const value = e.target.value;
+    setFormData(prev => ({
+      ...prev,
+      grp_type: value
+    }));
+
+    // Clear organization-specific errors when switching to admin
+    if (value === 'admin') {
+      setErrors(prev => {
+        const newErrors = { ...prev };
+        delete newErrors.organisation_type;
+        delete newErrors.address;
+        return newErrors;
+      });
+    }
+
+    // Auto-fill organization data when switching to organisation
+    if (value === 'organisation' && userData) {
+      setFormData(prev => ({
+        ...prev,
+        name: userData.name || prev.name,
+        email: userData.email || prev.email,
+        contact_no: userData.contact_no || prev.contact_no,
+        address: userData.address || prev.address,
+        organisation_type: userData.organisation_type || prev.organisation_type
       }));
     }
   };
@@ -134,6 +184,8 @@ const CreateGroup = () => {
 
   const validateForm = () => {
     const newErrors = {};
+    
+    // Common required fields for both group types
     if (!formData.name.trim()) newErrors.name = 'Group name is required';
     if (!formData.email.trim()) newErrors.email = 'Email is required';
     if (!formData.contact_no.trim()) newErrors.contact_no = 'Contact number is required';
@@ -150,6 +202,7 @@ const CreateGroup = () => {
       newErrors.contact_no = 'Contact number must be 10 digits';
     }
 
+    // Organization-specific validations - only for organisation group type
     if (formData.grp_type === 'organisation') {
       if (!formData.organisation_type.trim()) {
         newErrors.organisation_type = 'Organisation type is required';
@@ -162,6 +215,7 @@ const CreateGroup = () => {
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
+
   const handleSubmit = async (e) => {
       e.preventDefault();
       if (!validateForm()) return;
@@ -188,7 +242,6 @@ const CreateGroup = () => {
         console.log('Submitting form data:', formData);
         console.log('Submitting files:', files);
         
-        // ✅ FIXED: Send submitData instead of formData
         const response = await CreationGroup(submitData);
         
         navigate(`/ticket/create-event/${response.group._id}`, {
@@ -217,9 +270,10 @@ const CreateGroup = () => {
         setLoading(false);
       }
   };
+
   const handleBack = () => navigate(-1);
 
-  if (!capabilities) {
+  if (!capabilities || !userData) {
     return (
       <div className={`min-h-screen flex items-center justify-center ${darkMode ? 'bg-gray-900 text-white' : 'bg-gray-100 text-black'}`}>
         <div className="text-lg">Loading...</div>
@@ -528,7 +582,11 @@ const CreateGroup = () => {
                       {['admin', 'organisation'].map(type => (
                         <label key={type} className="flex items-center space-x-2 cursor-pointer">
                           <input
-                            type="radio" name="grp_type" value={type} checked={formData.grp_type === type} onChange={handleInputChange}
+                            type="radio" 
+                            name="grp_type" 
+                            value={type} 
+                            checked={formData.grp_type === type} 
+                            onChange={handleGroupTypeChange}
                             className={`w-4 h-4 text-indigo-600 focus:ring-indigo-500 ${darkMode ? 'bg-gray-800 border-gray-600' : 'bg-gray-100 border-gray-300'}`}
                           />
                           <span className={`${darkMode ? 'text-gray-300' : 'text-gray-700'} capitalize`}>{type}</span>
@@ -537,20 +595,69 @@ const CreateGroup = () => {
                     </div>
                   </div>
                 )}
+                {/* Common fields for both group types */}
+                <div>
+                  <label className={`block text-sm font-medium mb-2 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                    {formData.grp_type === 'admin' ? 'Admin name' : 'Organization name'}
+                  </label>
+                  <input 
+                    type="text" 
+                    name="name" 
+                    value={formData.name} 
+                    onChange={handleInputChange} 
+                    placeholder={formData.grp_type === 'admin' ? 'Enter admin name' : 'Enter your organization name'}
+                    className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 h-12
+                      ${darkMode ? 'text-white border-gray-600' : 'text-gray-900 border-gray-300'}
+                      ${errors.name ? 'border-red-500' : ''}`
+                    }
+                    style={{ backgroundColor: darkMode ? '#212426' : 'white' }}
+                  />
+                  {errors.name && <p className="text-red-500 text-sm mt-1">{errors.name}</p>}
+                </div>
 
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <label className={`block text-sm font-medium mb-2 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                      {formData.grp_type === 'admin' ? 'Admin email ID' : 'Organisation email ID'}
+                    </label>
+                    <input 
+                      type="email" 
+                      name="email" 
+                      value={formData.email} 
+                      onChange={handleInputChange} 
+                      placeholder={formData.grp_type === 'admin' ? 'Enter admin email' : 'Enter your organization email'}
+                      className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 h-12
+                        ${darkMode ? 'text-white border-gray-600' : 'text-gray-900 border-gray-300'}
+                        ${errors.email ? 'border-red-500' : ''}`
+                      }
+                      style={{ backgroundColor: darkMode ? '#212426' : 'white' }}
+                    />
+                    {errors.email && <p className="text-red-500 text-sm mt-1">{errors.email}</p>}
+                  </div>
+                  <div>
+                    <label className={`block text-sm font-medium mb-2 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                      {formData.grp_type === 'admin' ? 'Admin contact' : 'Organisation contact'}
+                    </label>
+                    <input 
+                      type="tel" 
+                      name="contact_no" 
+                      value={formData.contact_no} 
+                      onChange={handleInputChange} 
+                      placeholder="Enter your contact number" 
+                      maxLength="10"
+                      className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 h-12
+                        ${darkMode ? 'text-white border-gray-600' : 'text-gray-900 border-gray-300'}
+                        ${errors.contact_no ? 'border-red-500' : ''}`
+                      }
+                      style={{ backgroundColor: darkMode ? '#212426' : 'white' }}
+                    />
+                    {errors.contact_no && <p className="text-red-500 text-sm mt-1">{errors.contact_no}</p>}
+                  </div>
+                </div>
+
+                {/* Organization-specific fields */}
                 {formData.grp_type === 'organisation' && (
                   <>
-                    <div>
-                      <label className={`block text-sm font-medium mb-2 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>Organization name</label>
-                      <input type="text" name="name" value={formData.name} onChange={handleInputChange} placeholder="Enter your organization name"
-                        className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 h-12
-                          ${darkMode ? 'text-white border-gray-600' : 'text-gray-900 border-gray-300'}
-                          ${errors.name ? 'border-red-500' : ''}`
-                        }
-                        style={{ backgroundColor: darkMode ? '#212426' : 'white' }}
-                      />
-                      {errors.name && <p className="text-red-500 text-sm mt-1">{errors.name}</p>}
-                    </div>
                     <div>
                       <label className={`block text-sm font-medium mb-2 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>Type of organization</label>
                       <div className="relative">
@@ -562,7 +669,7 @@ const CreateGroup = () => {
                           }
                           style={{ backgroundColor: darkMode ? '#212426' : 'white' }}
                         >
-                          <option value="" disabled>Select your event category</option>
+                          <option value="" disabled>Select your organization type</option>
                           {['Private Limited', 'Public Limited', 'Partnership', 'Proprietorship', 'LLP', 'NGO', 'Educational', 'Healthcare', 'Non-profit', 'Trust', 'Society', 'Other'].map(opt => (
                               <option key={opt} value={opt}>{opt}</option>
                           ))}
@@ -575,31 +682,8 @@ const CreateGroup = () => {
                       </div>
                       {errors.organisation_type && <p className="text-red-500 text-sm mt-1">{errors.organisation_type}</p>}
                     </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      <div>
-                        <label className={`block text-sm font-medium mb-2 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>Organisation email ID</label>
-                        <input type="email" name="email" value={formData.email} onChange={handleInputChange} placeholder="Enter your organization email"
-                          className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 h-12
-                            ${darkMode ? 'text-white border-gray-600' : 'text-gray-900 border-gray-300'}
-                            ${errors.email ? 'border-red-500' : ''}`
-                          }
-                          style={{ backgroundColor: darkMode ? '#212426' : 'white' }}
-                        />
-                        {errors.email && <p className="text-red-500 text-sm mt-1">{errors.email}</p>}
-                      </div>
-                      <div>
-                        <label className={`block text-sm font-medium mb-2 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>Organisation contact</label>
-                        <input type="tel" name="contact_no" value={formData.contact_no} onChange={handleInputChange} placeholder="Enter your contact number" maxLength="10"
-                          className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 h-12
-                            ${darkMode ? 'text-white border-gray-600' : 'text-gray-900 border-gray-300'}
-                            ${errors.contact_no ? 'border-red-500' : ''}`
-                          }
-                          style={{ backgroundColor: darkMode ? '#212426' : 'white' }}
-                        />
-                        {errors.contact_no && <p className="text-red-500 text-sm mt-1">{errors.contact_no}</p>}
-                      </div>
-                    </div>
-                     <div>
+                    
+                    <div>
                       <label className={`block text-sm font-medium mb-2 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>Organisation address</label>
                       <textarea name="address" value={formData.address} onChange={handleInputChange} placeholder="Enter your organisation address" rows="4"
                         className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none min-h-[100px]
