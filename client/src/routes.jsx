@@ -1,7 +1,6 @@
 import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { useSelector } from 'react-redux';
-
 import LoginPage from './pages/auth/LoginPage';
 import HomePage from './pages/auth/HomePage';
 import ProfilePage from './pages/auth/ProfilePage';
@@ -17,6 +16,7 @@ import ResetPassword from './pages/auth/ResetPassword';
 import CreateGroup from './pages/ticket/CreateGroup';
 import ViewGroups from './pages/ticket/ViewGroups';
 import CreateTicket from './pages/ticket/CreateTicket';
+import UpdateTicketMedia from './pages/ticket/UpdateTicketMedia';
 import GroupSelectionModal from './components/modals/GroupSelectionModal'; // Import the modal
 import ViewEvents from './pages/ticket/ViewEvents';
 const ProtectedRoute = ({ children, allowedRoles }) => {
@@ -50,8 +50,8 @@ const AppRoutes = () => {
       <Route path="/forgot-password" element={<ForgotPassword />} />
       <Route path="/verify-user/:input" element={<VerifyUser />} />
       <Route path="/reset-password/:input" element={<ResetPassword />} />
-      <Route path="/ticket/create-event" element={<CreateTicket />} />
       <Route path="/ticket/create-event/:groupId" element={<CreateTicket />} />
+      <Route path="/ticket/update-ticket-media/:ticketId" element={<UpdateTicketMedia />} />
       <Route path="/select-group" element={<GroupSelectionModal />} />
       <Route path="/ticket/create-group" element={<CreateGroup />} />
       <Route path="/ticket/view-events" element={<ViewEvents />} />
