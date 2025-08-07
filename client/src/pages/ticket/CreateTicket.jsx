@@ -260,8 +260,7 @@ const CreateTicket = () => {
       
       const response = await createTicketBasicInfo(submitData);
       console.log('Event created:', response);
-      
-      navigate('/ticket/groups', { 
+      navigate(`/ticket/update-ticket-media/${response.ticketId}`, { 
         state: { 
           message: 'Event created successfully!',
           newEvent: response.data 
