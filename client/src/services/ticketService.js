@@ -1,5 +1,12 @@
 import api from "./ticketAxiox";
-
+export const getUserData = async () => {
+  try {
+    const response = await api.get("ticket/get-user-data");
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
+};
 export const CreationGroup = async (formData) => {
   try {
     const response = await api.post("ticket/create-group", formData, {
