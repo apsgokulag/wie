@@ -4,22 +4,31 @@ import User from "../../../auth-service/src/models/user.model.js";
 import Group from "../models/group.model.js";
 import Ticket from "../models/ticket.model.js";
 import { getUserFromAuthService } from "../rabbit/consumerConnections.js";
+import upload from '../middlewares/upload.js';
+import multer from 'multer';
 export const CreateGroup = async (req, res) => {
   try {
-    console.log("User from token:", req.user); // Debug log
-    
+    await new Promise((resolve, reject) => {
+      upload.fields([
+        { name: 'id_proof', maxCount: 1 },
+        { name: 'bank_check', maxCount: 1 },
+        { name: 'company_certificate', maxCount: 1 },
+        { name: 'company_logo', maxCount: 1 },
+      ])(req, res, (err) => {
+        if (err) return reject(err);
+        return resolve();
+      });
+    });
+    // 2. Extract user info from auth
     const userId = req.user._id || req.user.id;
-    const userRole = req.user.role; // 'admin' or 'organisation'
-
-    // Validate user role
+    const userRole = req.user.role;
+    console.log("User from token:", req.user);
+    console.log("Uploaded files:", req.files);
+    console.log("Request body:", req.body);
     if (!['admin', 'organisation'].includes(userRole)) {
       return res.status(400).json({ message: "Invalid user role" });
     }
-    // Optional: Get additional user details from auth-service if needed
-    // const userData = await getUserFromAuthService(userId);
-    // if (!userData) {
-    //   return res.status(404).json({ message: "User not found in auth service" });
-    // }
+    // 3. Extract fields
     const {
       name,
       email,
@@ -27,101 +36,100 @@ export const CreateGroup = async (req, res) => {
       address,
       gst_no,
       pan_no,
-      id_proof,
-      bank_check,
-      company_certificate,
-      company_logo,
       organisation_type,
-      grp_type // This will be sent from frontend based on admin's choice
+      grp_type,
     } = req.body;
-    console.log("Request body:", req.body); // Debug log
-    // Validate required fields
-    if (!name || !email || !contact_no || !pan_no || !id_proof) {
-      return res.status(400).json({ 
-        message: "Missing required fields: name, email, contact_no, pan_no, id_proof" 
+
+    const filePaths = {
+      id_proof: req.files?.id_proof?.[0]?.path || null,
+      bank_check: req.files?.bank_check?.[0]?.path || null,
+      company_certificate: req.files?.company_certificate?.[0]?.path || null,
+      company_logo: req.files?.company_logo?.[0]?.path || null,
+    };
+
+    // 4. Basic validation
+    if (!name || !email || !contact_no || !pan_no || !filePaths.id_proof) {
+      return res.status(400).json({
+        message: "Missing required fields: name, email, contact_no, pan_no, id_proof file",
       });
     }
-    // Determine the actual group type
+
+    // 5. Role-based logic
     let actualGroupType;
     if (userRole === 'admin') {
-      // Admin can create both types, so use the grp_type from request
       if (!grp_type || !['admin', 'organisation'].includes(grp_type)) {
-        return res.status(400).json({ 
-          message: "Admin must specify group type (admin or organisation)" 
+        return res.status(400).json({
+          message: "Admin must specify group type (admin or organisation)"
         });
       }
       actualGroupType = grp_type;
-    } else if (userRole === 'organisation') {
-      // Organisation can only create organisation groups
+    } else {
       actualGroupType = 'organisation';
     }
 
-    // Validate required fields based on group type
+    // 6. Org validations
     if (actualGroupType === 'organisation') {
       if (!organisation_type) {
-        return res.status(400).json({ 
-          message: "Organisation type is required for organisation groups" 
-        });
+        return res.status(400).json({ message: "Organisation type is required" });
       }
       if (!address) {
-        return res.status(400).json({ 
-          message: "Address is required for organisation groups" 
-        });
+        return res.status(400).json({ message: "Address is required" });
       }
     }
 
-    // Build group data
+    // 7. Build group data
     const groupData = {
       name,
       email,
       contact_no,
       pan_no,
-      id_proof,
-      userId :userId,
+      id_proof: filePaths.id_proof,
+      userId,
       grp_type: actualGroupType,
       status: 'active',
     };
-    // Add optional fields
+
     if (gst_no) groupData.gst_no = gst_no;
-    if (bank_check) groupData.bank_check = bank_check;
-    // Add organisation-specific fields if needed
+    if (filePaths.bank_check) groupData.bank_check = filePaths.bank_check;
+
     if (actualGroupType === 'organisation') {
       groupData.address = address;
       groupData.organisation_type = organisation_type;
-      if (company_certificate) groupData.company_certificate = company_certificate;
-      if (company_logo) groupData.company_logo = company_logo;
+      if (filePaths.company_certificate) groupData.company_certificate = filePaths.company_certificate;
+      if (filePaths.company_logo) groupData.company_logo = filePaths.company_logo;
     }
 
-    console.log("Group data to save:", groupData); // Debug log
+    console.log("Group data to save:", groupData);
 
-    // Create and save the group
     const newGroup = new Group(groupData);
     await newGroup.save();
 
-    res.status(201).json({ 
-      message: "Group created successfully", 
+    res.status(201).json({
+      message: "Group created successfully",
       group: newGroup,
     });
 
   } catch (error) {
     console.error("Error creating group:", error);
-    
-    // Handle validation errors
+
+    if (error instanceof multer.MulterError) {
+      if (error.code === 'LIMIT_FILE_SIZE') {
+        return res.status(400).json({ message: "File too large. Max 10MB." });
+      }
+      return res.status(400).json({ message: error.message });
+    }
+
     if (error.name === 'ValidationError') {
       const messages = Object.values(error.errors).map(err => err.message);
-      return res.status(400).json({ 
-        message: "Validation error", 
-        errors: messages 
-      });
+      return res.status(400).json({ message: "Validation error", errors: messages });
     }
-    
-    res.status(500).json({ 
+
+    res.status(500).json({
       message: "Internal server error",
       error: process.env.NODE_ENV === 'development' ? error.message : undefined
     });
   }
 };
-
 // Helper function to get user capabilities for frontend
 export const getUserGroupCapabilities = async (req, res) => {
   try {
@@ -232,7 +240,9 @@ export const createTicketBasicInfo = async (req, res) => {
 export const updateTicketMedia = async (req, res) => {
   try {
     // Fix: Extract ticketId from req.body, not assign entire req.body
-    const { ticketId, event_logo, event_banner, event_images } = req.body;
+    const { event_logo, event_banner, event_images } = req.body;
+    const ticketId = req.params.ticketId;
+    console.log("Updating ticket media for ticketId:", ticketId);
     // Validate required parameters
     if (!ticketId) {
       return res.status(400).json({ 
@@ -567,7 +577,6 @@ export const deleteTicket = async (req, res) => {
       _id: ticketId, 
       groupId: groupId 
     });
-
     if (!deletedTicket) {
       return res.status(404).json({ message: "Ticket not found or unauthorized" });
     }

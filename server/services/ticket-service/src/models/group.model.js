@@ -35,15 +35,9 @@ const groupSchema = new mongoose.Schema(
     bank_check: { type: String, required: false },
     company_certificate: { 
       type: String,
-      required: function() {
-        return this.grp_type === 'organisation';
-      }
     },
     company_logo: {
       type: String,
-      required: function() {
-        return this.grp_type === 'organisation';
-      }
     }
   },
   {
