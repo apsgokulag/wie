@@ -1,11 +1,26 @@
-// D:\DEVELOP\wie\server\services\ticket-service\src\services\ticket.service.js
-
 import User from "../../../auth-service/src/models/user.model.js";
 import Group from "../models/group.model.js";
 import Ticket from "../models/ticket.model.js";
-import { getUserFromAuthService } from "../rabbit/consumerConnections.js";
 import upload from '../middlewares/upload.js';
 import multer from 'multer';
+import  { sendRPC } from '../rabbit/producer.js';
+export const getUserData = async (req, res) => {
+  try {
+    const userId = req.user._id || req.user.id;
+    const userData = await sendRPC('get-user', userId);
+    if (!userData) {
+      return res.status(404).json({ message: "User not found" });
+    }
+    res.status(200).json({
+      message: "User retrieved successfully",
+      user: userData
+    });
+  } catch (error) {
+    console.error("Error fetching user:", error);
+    res.status(500).json({ message: "Internal server error", error: error.message });
+  }
+};
+
 export const CreateGroup = async (req, res) => {
   try {
     await new Promise((resolve, reject) => {
@@ -19,16 +34,16 @@ export const CreateGroup = async (req, res) => {
         return resolve();
       });
     });
-    // 2. Extract user info from auth
     const userId = req.user._id || req.user.id;
     const userRole = req.user.role;
-    console.log("User from token:", req.user);
-    console.log("Uploaded files:", req.files);
-    console.log("Request body:", req.body);
     if (!['admin', 'organisation'].includes(userRole)) {
       return res.status(400).json({ message: "Invalid user role" });
     }
-    // 3. Extract fields
+    const userData = await sendRPC('get-user', userId);
+    if (!userData) {
+      return res.status(404).json({ message: "User not found in auth service" });
+    }
+    console.log("User data from auth service:", userData);
     const {
       name,
       email,
@@ -39,21 +54,18 @@ export const CreateGroup = async (req, res) => {
       organisation_type,
       grp_type,
     } = req.body;
-
     const filePaths = {
       id_proof: req.files?.id_proof?.[0]?.path || null,
       bank_check: req.files?.bank_check?.[0]?.path || null,
       company_certificate: req.files?.company_certificate?.[0]?.path || null,
       company_logo: req.files?.company_logo?.[0]?.path || null,
     };
-
     // 4. Basic validation
     if (!name || !email || !contact_no || !pan_no || !filePaths.id_proof) {
       return res.status(400).json({
         message: "Missing required fields: name, email, contact_no, pan_no, id_proof file",
       });
     }
-
     // 5. Role-based logic
     let actualGroupType;
     if (userRole === 'admin') {
@@ -76,7 +88,6 @@ export const CreateGroup = async (req, res) => {
         return res.status(400).json({ message: "Address is required" });
       }
     }
-
     // 7. Build group data
     const groupData = {
       name,
@@ -84,11 +95,10 @@ export const CreateGroup = async (req, res) => {
       contact_no,
       pan_no,
       id_proof: filePaths.id_proof,
-      userId,
+      userId: userId,
       grp_type: actualGroupType,
       status: 'active',
     };
-
     if (gst_no) groupData.gst_no = gst_no;
     if (filePaths.bank_check) groupData.bank_check = filePaths.bank_check;
 
@@ -98,12 +108,8 @@ export const CreateGroup = async (req, res) => {
       if (filePaths.company_certificate) groupData.company_certificate = filePaths.company_certificate;
       if (filePaths.company_logo) groupData.company_logo = filePaths.company_logo;
     }
-
-    console.log("Group data to save:", groupData);
-
     const newGroup = new Group(groupData);
     await newGroup.save();
-
     res.status(201).json({
       message: "Group created successfully",
       group: newGroup,
