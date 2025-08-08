@@ -9,7 +9,7 @@ import RegisterPage from './pages/auth/RegisterPage';
 import AdminSignup from './pages/auth/AdminSignup';
 import OrganisationSignup from './pages/auth/OrganisationSignup';
 import OtpPage from './pages/auth/OtpPage';
-import Index from './pages/index'; // Assuming this is the main landing page
+import Index from './pages/index';
 import ForgotPassword from './pages/auth/ForgotPassword';
 import VerifyUser from './pages/auth/VerifyUser';
 import ResetPassword from './pages/auth/ResetPassword';
@@ -17,8 +17,10 @@ import CreateGroup from './pages/ticket/CreateGroup';
 import ViewGroups from './pages/ticket/ViewGroups';
 import CreateTicket from './pages/ticket/CreateTicket';
 import UpdateTicketMedia from './pages/ticket/UpdateTicketMedia';
-import GroupSelectionModal from './components/modals/GroupSelectionModal'; // Import the modal
+import GroupSelectionModal from './components/modals/GroupSelectionModal';
 import ViewEvents from './pages/ticket/ViewEvents';
+
+// Protected Route - Only for authenticated users
 const ProtectedRoute = ({ children, allowedRoles }) => {
   const { token, user } = useSelector((state) => state.auth);
 
@@ -37,25 +39,105 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
   return children;
 };
 
+// Public Route - Only for non-authenticated users (reverse protection)
+const PublicRoute = ({ children }) => {
+  const { token, user } = useSelector((state) => state.auth);
+
+  // If user is logged in, redirect to home
+  if (token && user) {
+    return <Navigate to="/home" replace />;
+  }
+
+  return children;
+};
+
+// Mixed Route - Can be accessed by both authenticated and non-authenticated users
+const MixedRoute = ({ children }) => {
+  return children;
+};
+
 const AppRoutes = () => {
   return (
     <Routes>
-      <Route path="/otp" element={<OtpPage />} />
-      <Route path="/" element={<Index />} />
-      <Route path="/login" element={<LoginPage />} />
+      {/* Mixed Routes - Accessible to everyone */}
       <Route path="/blocked" element={<div className="p-10 text-center text-red-600 text-xl font-semibold">You are blocked.</div>} />
-      <Route path="/register" element={<RegisterPage />} />
-      <Route path="/adminsignup" element={<AdminSignup />} />
-      <Route path="/organisationsignup" element={<OrganisationSignup />} />
-      <Route path="/forgot-password" element={<ForgotPassword />} />
-      <Route path="/verify-user/:input" element={<VerifyUser />} />
-      <Route path="/reset-password/:input" element={<ResetPassword />} />
-      <Route path="/ticket/create-event/:groupId" element={<CreateTicket />} />
-      <Route path="/ticket/update-ticket-media/:ticketId" element={<UpdateTicketMedia />} />
-      <Route path="/select-group" element={<GroupSelectionModal />} />
-      <Route path="/ticket/create-group" element={<CreateGroup />} />
       <Route path="/ticket/view-events" element={<ViewEvents />} />
-      {/* Protected Routes */}
+      
+      {/* Public Routes - Only for non-authenticated users */}
+      <Route 
+        path="/" 
+        element={
+          <PublicRoute>
+            <Index />
+          </PublicRoute>
+        } 
+      />
+      <Route 
+        path="/login" 
+        element={
+          <PublicRoute>
+            <LoginPage />
+          </PublicRoute>
+        } 
+      />
+      <Route 
+        path="/register" 
+        element={
+          <PublicRoute>
+            <RegisterPage />
+          </PublicRoute>
+        } 
+      />
+      <Route 
+        path="/adminsignup" 
+        element={
+          <PublicRoute>
+            <AdminSignup />
+          </PublicRoute>
+        } 
+      />
+      <Route 
+        path="/organisationsignup" 
+        element={
+          <PublicRoute>
+            <OrganisationSignup />
+          </PublicRoute>
+        } 
+      />
+      <Route 
+        path="/forgot-password" 
+        element={
+          <PublicRoute>
+            <ForgotPassword />
+          </PublicRoute>
+        } 
+      />
+      <Route 
+        path="/otp" 
+        element={
+          <PublicRoute>
+            <OtpPage />
+          </PublicRoute>
+        } 
+      />
+      <Route 
+        path="/verify-user/:input" 
+        element={
+          <PublicRoute>
+            <VerifyUser />
+          </PublicRoute>
+        } 
+      />
+      <Route 
+        path="/reset-password/:input" 
+        element={
+          <PublicRoute>
+            <ResetPassword />
+          </PublicRoute>
+        } 
+      />
+
+      {/* Protected Routes - Only for authenticated users */}
       <Route
         path="/home"
         element={
@@ -89,12 +171,43 @@ const AppRoutes = () => {
         }
       />
       <Route
+        path="/ticket/create-event/:groupId"
+        element={
+          <ProtectedRoute allowedRoles={['organisation', 'admin']}>
+            <CreateTicket />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/ticket/update-ticket-media/:ticketId"
+        element={
+          <ProtectedRoute allowedRoles={['organisation', 'admin']}>
+            <UpdateTicketMedia />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/select-group"
+        element={
+          <ProtectedRoute allowedRoles={['organisation', 'admin']}>
+            <GroupSelectionModal />
+          </ProtectedRoute>
+        }
+      />
+      <Route
         path="/admin/dashboard"
         element={
-          <ProtectedRoute allowedRoles={['admin','organisation']}>
+          <ProtectedRoute allowedRoles={['admin', 'organisation']}>
             <AdminDashboard />
           </ProtectedRoute>
         }
+      />
+      {/* Catch-all route - redirect to appropriate page based on auth status */}
+      <Route 
+        path="*" 
+        element={
+          <Navigate to="/" replace />
+        } 
       />
     </Routes>
   );
