@@ -12,6 +12,7 @@ import TcIcon from '../../assets/Event/T&cIcon.svg';
 import LightIcon from '../../assets/Event/LightIcon.svg';
 import DarkIcon from '../../assets/Event/DarkIcon.svg';
 import BackIcon from '../../assets/Event/BackIcon.svg';
+
 // CSS for placeholders, which will be injected based on the theme
 const darkThemeStyles = `
   .dark input::placeholder,
@@ -57,6 +58,7 @@ const CreateGroup = () => {
   const [darkMode, setDarkMode] = useState(true);
   const [filePreviews, setFilePreviews] = useState({});
   const [hasGst, setHasGst] = useState(''); // Separate state for GST registration question
+  const [existingGroups, setExistingGroups] = useState([]);
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -97,6 +99,7 @@ const CreateGroup = () => {
     try {
       const caps = await getUserGroupCapabilities();
       setCapabilities(caps);
+      setExistingGroups(caps.userGroups || []);
       if (caps.userRole !== 'admin') {
         setFormData(prev => ({ ...prev, grp_type: 'organisation' }));
       }
@@ -104,12 +107,13 @@ const CreateGroup = () => {
       console.error('Error fetching capabilities:', error);
     }
   };
+
   const fetchUserData = async () => {
     try {
       const response = await getUserData();
       if (response && response.user) {
         setUserData(response.user);
-        // Auto-fill form data with user data
+        // Auto-fill form data with user data for organisation type
         setFormData(prev => ({
           ...prev,
           name: response.user.name || '',
@@ -124,6 +128,47 @@ const CreateGroup = () => {
     }
   };
 
+  // Check if user can create specific group type
+  const canCreateGroupType = (groupType) => {
+    if (!capabilities || !existingGroups) return false;
+    
+    if (capabilities.userRole === 'admin') {
+      if (groupType === 'admin') {
+        return existingGroups.filter(g => g.grp_type === 'admin').length === 0;
+      } else {
+        return existingGroups.filter(g => g.grp_type === 'organisation').length === 0;
+      }
+    } else {
+      // Organisation user can create up to 4 groups
+      return existingGroups.length < 4;
+    }
+  };
+
+  const getGroupCreationMessage = () => {
+    if (!capabilities || !existingGroups) return '';
+    
+    if (capabilities.userRole === 'admin') {
+      const adminGroups = existingGroups.filter(g => g.grp_type === 'admin').length;
+      const orgGroups = existingGroups.filter(g => g.grp_type === 'organisation').length;
+      
+      if (adminGroups >= 1 && orgGroups >= 1) {
+        return 'You have reached the maximum limit for group creation.';
+      } else if (adminGroups >= 1) {
+        return 'You can create 1 more organisation group.';
+      } else if (orgGroups >= 1) {
+        return 'You can create 1 more admin group.';
+      } else {
+        return 'You can create 1 admin group and 1 organisation group.';
+      }
+    } else {
+      const remaining = 4 - existingGroups.length;
+      if (remaining <= 0) {
+        return 'You have reached the maximum limit of 4 groups.';
+      } else {
+        return `You can create ${remaining} more organisation group${remaining > 1 ? 's' : ''}.`;
+      }
+    }
+  };
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setFormData(prev => ({
@@ -146,25 +191,18 @@ const CreateGroup = () => {
       grp_type: value
     }));
 
-    // Clear organization-specific errors when switching to admin
-    if (value === 'admin') {
-      setErrors(prev => {
-        const newErrors = { ...prev };
-        delete newErrors.organisation_type;
-        delete newErrors.address;
-        return newErrors;
-      });
-    }
+    // Clear errors when switching group types
+    setErrors({});
 
     // Auto-fill organization data when switching to organisation
     if (value === 'organisation' && userData) {
       setFormData(prev => ({
         ...prev,
-        name: userData.name || prev.name,
-        email: userData.email || prev.email,
-        contact_no: userData.contact_no || prev.contact_no,
-        address: userData.address || prev.address,
-        organisation_type: userData.organisation_type || prev.organisation_type
+        name: userData.name || '',
+        email: userData.email || '',
+        contact_no: userData.contact_no || '',
+        address: userData.address || '',
+        organisation_type: userData.organisation_type || ''
       }));
     }
   };
@@ -185,30 +223,31 @@ const CreateGroup = () => {
   const validateForm = () => {
     const newErrors = {};
     
-    // Common required fields for both group types
-    if (!formData.name.trim()) newErrors.name = 'Group name is required';
-    if (!formData.email.trim()) newErrors.email = 'Email is required';
-    if (!formData.contact_no.trim()) newErrors.contact_no = 'Contact number is required';
+    // Common required fields
     if (!formData.pan_no.trim()) newErrors.pan_no = 'PAN number is required';
     if (!files.id_proof) newErrors.id_proof = 'ID proof is required';
 
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (formData.email && !emailRegex.test(formData.email)) {
-      newErrors.email = 'Please enter a valid email address';
-    }
+    if (formData.grp_type === 'admin') {
+      // Admin group validation - no need to validate name, email, contact as they come from user data
+      if (!userData?.name) newErrors.name = 'Admin name is required in profile';
+      if (!userData?.email) newErrors.email = 'Admin email is required in profile';
+      if (!userData?.contact_no) newErrors.contact_no = 'Admin contact is required in profile';
+    } else {
+      // Organisation group validations
+      if (!formData.name.trim()) newErrors.name = 'Organization name is required';
+      if (!formData.email.trim()) newErrors.email = 'Email is required';
+      if (!formData.contact_no.trim()) newErrors.contact_no = 'Contact number is required';
+      if (!formData.organisation_type.trim()) newErrors.organisation_type = 'Organisation type is required';
+      if (!formData.address.trim()) newErrors.address = 'Address is required';
 
-    const phoneRegex = /^[0-9]{10}$/;
-    if (formData.contact_no && !phoneRegex.test(formData.contact_no)) {
-      newErrors.contact_no = 'Contact number must be 10 digits';
-    }
-
-    // Organization-specific validations - only for organisation group type
-    if (formData.grp_type === 'organisation') {
-      if (!formData.organisation_type.trim()) {
-        newErrors.organisation_type = 'Organisation type is required';
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (formData.email && !emailRegex.test(formData.email)) {
+        newErrors.email = 'Please enter a valid email address';
       }
-      if (!formData.address.trim()) {
-        newErrors.address = 'Address is required for organisation groups';
+
+      const phoneRegex = /^[0-9]{10}$/;
+      if (formData.contact_no && !phoneRegex.test(formData.contact_no)) {
+        newErrors.contact_no = 'Contact number must be 10 digits';
       }
     }
 
@@ -218,6 +257,13 @@ const CreateGroup = () => {
 
   const handleSubmit = async (e) => {
       e.preventDefault();
+      
+      // Check if user can create this group type
+      if (!canCreateGroupType(formData.grp_type)) {
+        setErrors({ general: `You cannot create more ${formData.grp_type} groups.` });
+        return;
+      }
+      
       if (!validateForm()) return;
 
       setLoading(true);
@@ -225,7 +271,7 @@ const CreateGroup = () => {
         // Create FormData for file upload
         const submitData = new FormData();
         
-        // Append all form fields
+        // Append all form fields (backend will handle admin vs org logic)
         Object.keys(formData).forEach(key => {
           if (formData[key] !== '') {
             submitData.append(key, formData[key]);
@@ -563,6 +609,11 @@ const CreateGroup = () => {
               </div>
               <p className={`text-sm mb-2 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>SECTION 1/6</p>
               <h1 className={`text-xl lg:text-2xl font-semibold lg:mb-8 ${darkMode ? 'text-white' : 'text-gray-900'}`}>Create your group to organize the event</h1>
+              
+              {/* Group creation limits message */}
+              <div className={`mt-4 p-3 rounded-lg ${darkMode ? 'bg-blue-900/20 border border-blue-700/30 text-blue-300' : 'bg-blue-50 border border-blue-200 text-blue-700'}`}>
+                <p className="text-sm">{getGroupCreationMessage()}</p>
+              </div>
             </div>
 
             {errors.general && (
@@ -579,87 +630,115 @@ const CreateGroup = () => {
                       Event created under <span className="text-red-400">*</span>
                     </label>
                     <div className="flex space-x-6">
-                      {['admin', 'organisation'].map(type => (
-                        <label key={type} className="flex items-center space-x-2 cursor-pointer">
-                          <input
-                            type="radio" 
-                            name="grp_type" 
-                            value={type} 
-                            checked={formData.grp_type === type} 
-                            onChange={handleGroupTypeChange}
-                            className={`w-4 h-4 text-indigo-600 focus:ring-indigo-500 ${darkMode ? 'bg-gray-800 border-gray-600' : 'bg-gray-100 border-gray-300'}`}
-                          />
-                          <span className={`${darkMode ? 'text-gray-300' : 'text-gray-700'} capitalize`}>{type}</span>
-                        </label>
-                      ))}
+                      {['admin', 'organisation'].map(type => {
+                        const canCreate = canCreateGroupType(type);
+                        return (
+                          <label key={type} className={`flex items-center space-x-2 ${canCreate ? 'cursor-pointer' : 'cursor-not-allowed opacity-50'}`}>
+                            <input
+                              type="radio" 
+                              name="grp_type" 
+                              value={type} 
+                              checked={formData.grp_type === type} 
+                              onChange={handleGroupTypeChange}
+                              disabled={!canCreate}
+                              className={`w-4 h-4 text-indigo-600 focus:ring-indigo-500 ${darkMode ? 'bg-gray-800 border-gray-600' : 'bg-gray-100 border-gray-300'}`}
+                            />
+                            <span className={`${darkMode ? 'text-gray-300' : 'text-gray-700'} capitalize`}>
+                              {type} {!canCreate && '(Max reached)'}
+                            </span>
+                          </label>
+                        );
+                      })}
                     </div>
                   </div>
                 )}
-                {/* Common fields for both group types */}
-                <div>
-                  <label className={`block text-sm font-medium mb-2 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
-                    {formData.grp_type === 'admin' ? 'Admin name' : 'Organization name'}
-                  </label>
-                  <input 
-                    type="text" 
-                    name="name" 
-                    value={formData.name} 
-                    onChange={handleInputChange} 
-                    placeholder={formData.grp_type === 'admin' ? 'Enter admin name' : 'Enter your organization name'}
-                    className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 h-12
-                      ${darkMode ? 'text-white border-gray-600' : 'text-gray-900 border-gray-300'}
-                      ${errors.name ? 'border-red-500' : ''}`
-                    }
-                    style={{ backgroundColor: darkMode ? '#212426' : 'white' }}
-                  />
-                  {errors.name && <p className="text-red-500 text-sm mt-1">{errors.name}</p>}
-                </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div>
-                    <label className={`block text-sm font-medium mb-2 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
-                      {formData.grp_type === 'admin' ? 'Admin email ID' : 'Organisation email ID'}
-                    </label>
-                    <input 
-                      type="email" 
-                      name="email" 
-                      value={formData.email} 
-                      onChange={handleInputChange} 
-                      placeholder={formData.grp_type === 'admin' ? 'Enter admin email' : 'Enter your organization email'}
-                      className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 h-12
-                        ${darkMode ? 'text-white border-gray-600' : 'text-gray-900 border-gray-300'}
-                        ${errors.email ? 'border-red-500' : ''}`
-                      }
-                      style={{ backgroundColor: darkMode ? '#212426' : 'white' }}
-                    />
-                    {errors.email && <p className="text-red-500 text-sm mt-1">{errors.email}</p>}
+                {/* Admin Group Form */}
+                {formData.grp_type === 'admin' && (
+                  <div className={`p-4 rounded-lg ${darkMode ? 'bg-gray-800/50 border border-gray-700' : 'bg-gray-50 border border-gray-200'}`}>
+                    <h3 className={`text-lg font-semibold mb-4 ${darkMode ? 'text-white' : 'text-gray-900'}`}>Admin Group Details</h3>
+                    <div className={`p-3 rounded ${darkMode ? 'bg-blue-900/20 text-blue-300' : 'bg-blue-50 text-blue-700'}`}>
+                      <p className="text-sm mb-2">Admin details will be automatically filled from your profile:</p>
+                      <ul className="text-sm space-y-1">
+                        <li>• Name: {userData?.name || 'Not set'}</li>
+                        <li>• Email: {userData?.email || 'Not set'}</li>
+                        <li>• Contact: {userData?.contact_no || 'Not set'}</li>
+                      </ul>
+                    </div>
+                    {(!userData?.name || !userData?.email || !userData?.contact_no) && (
+                      <div className={`mt-3 p-3 rounded ${darkMode ? 'bg-red-900/20 border border-red-700/30 text-red-300' : 'bg-red-50 border border-red-200 text-red-700'}`}>
+                        <p className="text-sm">Please update your profile with missing information before creating an admin group.</p>
+                      </div>
+                    )}
                   </div>
-                  <div>
-                    <label className={`block text-sm font-medium mb-2 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
-                      {formData.grp_type === 'admin' ? 'Admin contact' : 'Organisation contact'}
-                    </label>
-                    <input 
-                      type="tel" 
-                      name="contact_no" 
-                      value={formData.contact_no} 
-                      onChange={handleInputChange} 
-                      placeholder="Enter your contact number" 
-                      maxLength="10"
-                      className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 h-12
-                        ${darkMode ? 'text-white border-gray-600' : 'text-gray-900 border-gray-300'}
-                        ${errors.contact_no ? 'border-red-500' : ''}`
-                      }
-                      style={{ backgroundColor: darkMode ? '#212426' : 'white' }}
-                    />
-                    {errors.contact_no && <p className="text-red-500 text-sm mt-1">{errors.contact_no}</p>}
-                  </div>
-                </div>
+                )}
 
-                {/* Organization-specific fields */}
+                {/* Organisation Group Form */}
                 {formData.grp_type === 'organisation' && (
                   <>
                     <div>
-                      <label className={`block text-sm font-medium mb-2 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>Type of organization</label>
+                      <label className={`block text-sm font-medium mb-2 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                        Organization name <span className="text-red-400">*</span>
+                      </label>
+                      <input 
+                        type="text" 
+                        name="name" 
+                        value={formData.name} 
+                        onChange={handleInputChange} 
+                        placeholder="Enter your organization name"
+                        className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 h-12
+                          ${darkMode ? 'text-white border-gray-600' : 'text-gray-900 border-gray-300'}
+                          ${errors.name ? 'border-red-500' : ''}`
+                        }
+                        style={{ backgroundColor: darkMode ? '#212426' : 'white' }}
+                      />
+                      {errors.name && <p className="text-red-500 text-sm mt-1">{errors.name}</p>}
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div>
+                        <label className={`block text-sm font-medium mb-2 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                          Organisation email ID <span className="text-red-400">*</span>
+                        </label>
+                        <input 
+                          type="email" 
+                          name="email" 
+                          value={formData.email} 
+                          onChange={handleInputChange} 
+                          placeholder="Enter your organization email"
+                          className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 h-12
+                            ${darkMode ? 'text-white border-gray-600' : 'text-gray-900 border-gray-300'}
+                            ${errors.email ? 'border-red-500' : ''}`
+                          }
+                          style={{ backgroundColor: darkMode ? '#212426' : 'white' }}
+                        />
+                        {errors.email && <p className="text-red-500 text-sm mt-1">{errors.email}</p>}
+                      </div>
+                      <div>
+                        <label className={`block text-sm font-medium mb-2 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                          Organisation contact <span className="text-red-400">*</span>
+                        </label>
+                        <input 
+                          type="tel" 
+                          name="contact_no" 
+                          value={formData.contact_no} 
+                          onChange={handleInputChange} 
+                          placeholder="Enter your contact number" 
+                          maxLength="10"
+                          className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 h-12
+                            ${darkMode ? 'text-white border-gray-600' : 'text-gray-900 border-gray-300'}
+                            ${errors.contact_no ? 'border-red-500' : ''}`
+                          }
+                          style={{ backgroundColor: darkMode ? '#212426' : 'white' }}
+                        />
+                        {errors.contact_no && <p className="text-red-500 text-sm mt-1">{errors.contact_no}</p>}
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className={`block text-sm font-medium mb-2 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                        Type of organization <span className="text-red-400">*</span>
+                      </label>
                       <div className="relative">
                         <select name="organisation_type" value={formData.organisation_type} onChange={handleInputChange}
                           className={`appearance-none w-full pr-10 pl-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 h-12
@@ -684,7 +763,9 @@ const CreateGroup = () => {
                     </div>
                     
                     <div>
-                      <label className={`block text-sm font-medium mb-2 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>Organisation address</label>
+                      <label className={`block text-sm font-medium mb-2 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                        Organisation address <span className="text-red-400">*</span>
+                      </label>
                       <textarea name="address" value={formData.address} onChange={handleInputChange} placeholder="Enter your organisation address" rows="4"
                         className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none min-h-[100px]
                           ${darkMode ? 'text-white border-gray-600' : 'text-gray-900 border-gray-300'}
@@ -727,7 +808,9 @@ const CreateGroup = () => {
                 )}
 
                 <div>
-                  <label className={`block text-sm font-medium mb-2 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>PAN number</label>
+                  <label className={`block text-sm font-medium mb-2 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                    PAN number <span className="text-red-400">*</span>
+                  </label>
                   <input type="text" name="pan_no" value={formData.pan_no} onChange={handleInputChange} placeholder="Enter your PAN number"
                     className={`w-full px-4 py-3 border rounded-lg h-12 focus:outline-none focus:ring-2 focus:ring-indigo-500
                       ${darkMode ? 'text-white border-gray-600' : 'text-gray-900 border-gray-300'}
@@ -739,7 +822,7 @@ const CreateGroup = () => {
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <FileUploadArea label="ID proof" name="id_proof" />
+                  <FileUploadArea label="ID proof *" name="id_proof" />
                   <FileUploadArea label="Bank cheque" name="bank_check" />
                 </div>
 
@@ -753,7 +836,7 @@ const CreateGroup = () => {
 
               {/* RESPONSIVE: Button layout stacks on mobile and is row on sm+ screens */}
               <div className="flex flex-col sm:flex-row justify-end gap-4 pt-8">
-                <button type="button" onClick={() => navigate('/groups')} disabled={loading}
+                <button type="button" onClick={() => navigate('/ticket/groups')} disabled={loading}
                   className="w-full sm:w-auto px-8 py-3 rounded-lg transition-colors disabled:opacity-50 h-12 min-w-[120px] font-semibold"
                   style={{
                     backgroundColor: darkMode ? '#363A3F' : '#E5E7EB',
@@ -762,7 +845,9 @@ const CreateGroup = () => {
                 >
                   Cancel
                 </button>
-                <button type="submit" disabled={loading}
+                <button 
+                  type="submit" 
+                  disabled={loading || !canCreateGroupType(formData.grp_type)}
                   className="w-full sm:w-auto px-8 py-3 text-white rounded-lg transition-colors disabled:opacity-50 h-12 min-w-[120px] font-semibold"
                   style={{ backgroundColor: darkMode ? '#1E1242' : '#1E1242' }}
                 >
