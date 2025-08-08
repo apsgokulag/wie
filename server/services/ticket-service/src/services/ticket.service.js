@@ -20,7 +20,6 @@ export const getUserData = async (req, res) => {
     res.status(500).json({ message: "Internal server error", error: error.message });
   }
 };
-
 export const CreateGroup = async (req, res) => {
   try {
     await new Promise((resolve, reject) => {
@@ -34,16 +33,21 @@ export const CreateGroup = async (req, res) => {
         return resolve();
       });
     });
+    
     const userId = req.user._id || req.user.id;
     const userRole = req.user.role;
+    
     if (!['admin', 'organisation'].includes(userRole)) {
       return res.status(400).json({ message: "Invalid user role" });
     }
+    
     const userData = await sendRPC('get-user', userId);
     if (!userData) {
       return res.status(404).json({ message: "User not found in auth service" });
     }
+    
     console.log("User data from auth service:", userData);
+    
     const {
       name,
       email,
@@ -54,19 +58,15 @@ export const CreateGroup = async (req, res) => {
       organisation_type,
       grp_type,
     } = req.body;
+    
     const filePaths = {
       id_proof: req.files?.id_proof?.[0]?.path || null,
       bank_check: req.files?.bank_check?.[0]?.path || null,
       company_certificate: req.files?.company_certificate?.[0]?.path || null,
       company_logo: req.files?.company_logo?.[0]?.path || null,
     };
-    // 4. Basic validation
-    if (!name || !email || !contact_no || !pan_no || !filePaths.id_proof) {
-      return res.status(400).json({
-        message: "Missing required fields: name, email, contact_no, pan_no, id_proof file",
-      });
-    }
-    // 5. Role-based logic
+    
+    // Determine actual group type
     let actualGroupType;
     if (userRole === 'admin') {
       if (!grp_type || !['admin', 'organisation'].includes(grp_type)) {
@@ -78,58 +78,112 @@ export const CreateGroup = async (req, res) => {
     } else {
       actualGroupType = 'organisation';
     }
-
-    // 6. Org validations
-    if (actualGroupType === 'organisation') {
+    
+    // Check group creation limits
+    const existingGroups = await Group.find({ userId: userId });
+    
+    if (userRole === 'admin') {
+      // Admin user limits: 1 admin group + 1 organisation group = max 2 groups
+      const adminGroups = existingGroups.filter(g => g.grp_type === 'admin');
+      const orgGroups = existingGroups.filter(g => g.grp_type === 'organisation');
+      
+      if (actualGroupType === 'admin' && adminGroups.length >= 1) {
+        return res.status(400).json({
+          message: "Admin users can only create one admin group"
+        });
+      }
+      
+      if (actualGroupType === 'organisation' && orgGroups.length >= 1) {
+        return res.status(400).json({
+          message: "Admin users can only create one organisation group"
+        });
+      }
+    } else {
+      // Organisation user limit: max 4 organisation groups
+      if (existingGroups.length >= 4) {
+        return res.status(400).json({
+          message: "Organisation users can create maximum 4 groups"
+        });
+      }
+    }
+    
+    // Validation based on group type
+    if (actualGroupType === 'admin') {
+      // For admin groups, use user data from auth service
+      if (!userData.name || !userData.email || !userData.contact_no) {
+        return res.status(400).json({
+          message: "Admin user data incomplete. Please update your profile."
+        });
+      }
+      
+      // Basic validation for admin group
+      if (!pan_no || !filePaths.id_proof) {
+        return res.status(400).json({
+          message: "Missing required fields: pan_no, id_proof file"
+        });
+      }
+    } else {
+      // Organisation group validations
+      if (!name || !email || !contact_no || !pan_no || !filePaths.id_proof) {
+        return res.status(400).json({
+          message: "Missing required fields: name, email, contact_no, pan_no, id_proof file",
+        });
+      }
+      
       if (!organisation_type) {
         return res.status(400).json({ message: "Organisation type is required" });
       }
+      
       if (!address) {
         return res.status(400).json({ message: "Address is required" });
       }
     }
-    // 7. Build group data
+    
+    // Build group data
     const groupData = {
-      name,
-      email,
-      contact_no,
       pan_no,
       id_proof: filePaths.id_proof,
       userId: userId,
       grp_type: actualGroupType,
       status: 'active',
     };
-    if (gst_no) groupData.gst_no = gst_no;
-    if (filePaths.bank_check) groupData.bank_check = filePaths.bank_check;
-
-    if (actualGroupType === 'organisation') {
+    
+    if (actualGroupType === 'admin') {
+      // Use admin user data from auth service
+      groupData.name = userData.name;
+      groupData.email = userData.email;
+      groupData.contact_no = userData.contact_no;
+    } else {
+      // Use form data for organisation
+      groupData.name = name;
+      groupData.email = email;
+      groupData.contact_no = contact_no;
       groupData.address = address;
       groupData.organisation_type = organisation_type;
       if (filePaths.company_certificate) groupData.company_certificate = filePaths.company_certificate;
       if (filePaths.company_logo) groupData.company_logo = filePaths.company_logo;
     }
+    // Add optional fields
+    if (gst_no) groupData.gst_no = gst_no;
+    if (filePaths.bank_check) groupData.bank_check = filePaths.bank_check;
     const newGroup = new Group(groupData);
     await newGroup.save();
     res.status(201).json({
       message: "Group created successfully",
       group: newGroup,
     });
-
   } catch (error) {
     console.error("Error creating group:", error);
-
     if (error instanceof multer.MulterError) {
       if (error.code === 'LIMIT_FILE_SIZE') {
         return res.status(400).json({ message: "File too large. Max 10MB." });
       }
       return res.status(400).json({ message: error.message });
     }
-
     if (error.name === 'ValidationError') {
       const messages = Object.values(error.errors).map(err => err.message);
       return res.status(400).json({ message: "Validation error", errors: messages });
     }
-
     res.status(500).json({
       message: "Internal server error",
       error: process.env.NODE_ENV === 'development' ? error.message : undefined
