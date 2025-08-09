@@ -95,16 +95,27 @@ const CreateGroup = () => {
     fetchUserData();
   }, []);
 
-  const fetchUserCapabilities = async () => {
+const fetchUserCapabilities = async () => {
     try {
+      // Log the start of the function call
+      console.log("1. Fetching user capabilities...");
+      
       const caps = await getUserGroupCapabilities();
+      
+      // Log the entire raw response from the API
+      console.log("2. Raw API Response (caps):", caps);
+
+      const userGroups = caps.userGroups || [];
+      
+      // Log the specific array you are about to put into state
+      console.log("3. Groups to be set in state (userGroups):", userGroups);
+
       setCapabilities(caps);
-      setExistingGroups(caps.userGroups || []);
-      if (caps.userRole !== 'admin') {
-        setFormData(prev => ({ ...prev, grp_type: 'organisation' }));
-      }
+      setExistingGroups(userGroups);
+
+      // ... rest of the function
     } catch (error) {
-      console.error('Error fetching capabilities:', error);
+      console.error("Error fetching capabilities:", error);
     }
   };
 
@@ -186,25 +197,25 @@ const CreateGroup = () => {
 
   const handleGroupTypeChange = (e) => {
     const value = e.target.value;
-    setFormData(prev => ({
-      ...prev,
-      grp_type: value
-    }));
+    setErrors({}); // Clear errors when switching
 
-    // Clear errors when switching group types
-    setErrors({});
+    setFormData(prev => {
+        const newState = {
+            ...prev,
+            grp_type: value
+        };
 
-    // Auto-fill organization data when switching to organisation
-    if (value === 'organisation' && userData) {
-      setFormData(prev => ({
-        ...prev,
-        name: userData.name || '',
-        email: userData.email || '',
-        contact_no: userData.contact_no || '',
-        address: userData.address || '',
-        organisation_type: userData.organisation_type || ''
-      }));
-    }
+        // If switching to 'organisation', auto-fill the fields from user data.
+        if (value === 'organisation' && userData) {
+            newState.name = userData.name || '';
+            newState.email = userData.email || '';
+            newState.contact_no = userData.contact_no || '';
+            newState.address = userData.address || '';
+            newState.organisation_type = userData.organisation_type || '';
+        }
+        
+        return newState;
+    });
   };
 
   const handleGstChange = (e) => {
@@ -284,9 +295,6 @@ const CreateGroup = () => {
             submitData.append(key, files[key]);
           }
         });
-
-        console.log('Submitting form data:', formData);
-        console.log('Submitting files:', files);
         
         const response = await CreationGroup(submitData);
         
@@ -472,9 +480,7 @@ const CreateGroup = () => {
   );
 
   return (
-    // RESPONSIVE: The main flex container is always present.
     <div className={`min-h-screen flex ${darkMode ? 'dark' : 'light'}`}>
-      {/* RESPONSIVE: Sidebar is hidden on screens smaller than lg (1024px) */}
       <div className={`hidden lg:flex w-[300px] p-6 flex-col transition-colors duration-300 ${darkMode ? 'bg-black text-white' : 'bg-white text-gray-800'}`}>
         <div className="flex items-center space-x-2 mb-8">
           <img src={WieLogo} alt="Wie Logo" className="w-10 h-10" />
@@ -531,15 +537,12 @@ const CreateGroup = () => {
         </nav>
       </div>
 
-      {/* Main Content */}
       <div className="flex-1 transition-colors duration-300" style={{ backgroundColor: darkMode ? '#212426' : '#F9FAFB' }}>
         
-        {/* RESPONSIVE: Mobile Header. Visible only on screens smaller than lg. */}
         <div className={`lg:hidden sticky top-0 z-30 flex items-center justify-between p-4 border-b ${darkMode ? 'bg-[#212426] border-gray-700' : 'bg-[#F9FAFB] border-gray-200'}`}>
             <BackButton onClick={handleBack} isDarkMode={darkMode} />
             <h1 className={`text-lg font-semibold ${darkMode ? 'text-white' : 'text-gray-800'}`}>Create Group</h1>
-             {/* Theme switcher for mobile */}
-             <div
+              <div
               onClick={() => setDarkMode(!darkMode)}
               className="w-[70px] h-[36px] rounded-full cursor-pointer relative px-[3px] flex items-center justify-between transition-all duration-300"
               style={{
@@ -555,8 +558,8 @@ const CreateGroup = () => {
                   transform: darkMode ? 'translateX(34px)' : 'translateX(0)',
                   backgroundColor: darkMode ? '#2E2E2E' : '#FFFFFF',
                    boxShadow: darkMode 
-                   ? 'inset -1px -1px 1px rgba(255, 255, 255, 0.05), inset 1px 1px 2px rgba(0, 0, 0, 0.3)'
-                   : '2px 2px 4px #cdd3da, -2px -2px 4px #fdffff'
+                  ? 'inset -1px -1px 1px rgba(255, 255, 255, 0.05), inset 1px 1px 2px rgba(0, 0, 0, 0.3)'
+                  : '2px 2px 4px #cdd3da, -2px -2px 4px #fdffff'
                 }}
               />
               <div className="w-[30px] h-[30px] flex items-center justify-center z-20">
@@ -568,7 +571,6 @@ const CreateGroup = () => {
             </div>
         </div>
 
-        {/* RESPONSIVE: Desktop theme switcher. Hidden on mobile. */}
         <div className="hidden lg:flex justify-end p-6">
           <div
             onClick={() => setDarkMode(!darkMode)}
@@ -599,10 +601,8 @@ const CreateGroup = () => {
           </div>
         </div>
 
-        {/* RESPONSIVE: Adjusted padding for different screen sizes */}
         <div className="p-4 sm:p-6">
           <div className="max-w-4xl mx-auto">
-            {/* RESPONSIVE: Adjusted title size and margin for mobile */}
             <div className="text-center mb-6 lg:mb-8">
               <div className="inline-flex items-center justify-center w-16 h-16 rounded-full mb-4" style={{ backgroundColor: darkMode ? '#1E1242' : '#1E1242' }}>
                 <img src={OrgIcon} alt="Organization" className="w-8 h-8 filter brightness-0 invert" />
@@ -610,7 +610,6 @@ const CreateGroup = () => {
               <p className={`text-sm mb-2 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>SECTION 1/6</p>
               <h1 className={`text-xl lg:text-2xl font-semibold lg:mb-8 ${darkMode ? 'text-white' : 'text-gray-900'}`}>Create your group to organize the event</h1>
               
-              {/* Group creation limits message */}
               <div className={`mt-4 p-3 rounded-lg ${darkMode ? 'bg-blue-900/20 border border-blue-700/30 text-blue-300' : 'bg-blue-50 border border-blue-200 text-blue-700'}`}>
                 <p className="text-sm">{getGroupCreationMessage()}</p>
               </div>
@@ -632,19 +631,19 @@ const CreateGroup = () => {
                     <div className="flex space-x-6">
                       {['admin', 'organisation'].map(type => {
                         const canCreate = canCreateGroupType(type);
-                        return (
-                          <label key={type} className={`flex items-center space-x-2 ${canCreate ? 'cursor-pointer' : 'cursor-not-allowed opacity-50'}`}>
+                        // Only render the option if the user can create this type of group
+                        return canCreate && (
+                          <label key={type} className="flex items-center space-x-2 cursor-pointer">
                             <input
-                              type="radio" 
-                              name="grp_type" 
-                              value={type} 
-                              checked={formData.grp_type === type} 
+                              type="radio"
+                              name="grp_type"
+                              value={type}
+                              checked={formData.grp_type === type}
                               onChange={handleGroupTypeChange}
-                              disabled={!canCreate}
                               className={`w-4 h-4 text-indigo-600 focus:ring-indigo-500 ${darkMode ? 'bg-gray-800 border-gray-600' : 'bg-gray-100 border-gray-300'}`}
                             />
                             <span className={`${darkMode ? 'text-gray-300' : 'text-gray-700'} capitalize`}>
-                              {type} {!canCreate && '(Max reached)'}
+                              {type}
                             </span>
                           </label>
                         );
@@ -834,7 +833,6 @@ const CreateGroup = () => {
                 )}
               </div>
 
-              {/* RESPONSIVE: Button layout stacks on mobile and is row on sm+ screens */}
               <div className="flex flex-col sm:flex-row justify-end gap-4 pt-8">
                 <button type="button" onClick={() => navigate('/ticket/groups')} disabled={loading}
                   className="w-full sm:w-auto px-8 py-3 rounded-lg transition-colors disabled:opacity-50 h-12 min-w-[120px] font-semibold"

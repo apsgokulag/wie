@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { getGroups } from '../../services/ticketService';
+// 1. Import getUserGroupCapabilities instead of getGroups
+import { getUserGroupCapabilities } from '../../services/ticketService';
 import './ViewGroups.css';
 
 const ViewGroups = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const [groups, setGroups] = useState([]);
+  const [capabilities, setCapabilities] = useState(null); // State to hold user capabilities
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
@@ -16,29 +18,52 @@ const ViewGroups = () => {
   const [filterType, setFilterType] = useState('all');
 
   useEffect(() => {
-    fetchGroups();
+    // 2. Fetch all necessary data when the component loads
+    fetchData();
     
-    // Check if we came from create group page with success message
     if (location.state?.message) {
       setSuccessMessage(location.state.message);
-      // Clear the message after 5 seconds
       setTimeout(() => setSuccessMessage(''), 5000);
+      // Clear location state to prevent message from reappearing on refresh
+      navigate(location.pathname, { replace: true });
     }
   }, [location.state]);
 
-  const fetchGroups = async () => {
+  const fetchData = async () => {
     try {
       setLoading(true);
-      const data = await getGroups();
-      setGroups(data);
+      // 3. Call the more comprehensive API endpoint
+      const data = await getUserGroupCapabilities();
+      setGroups(data.userGroups || []);
+      setCapabilities(data); // Store the capabilities, including the user's role
       setError('');
     } catch (err) {
-      console.error('Error fetching groups:', err);
-      setError('Failed to fetch groups. Please try again.');
+      console.error('Error fetching data:', err);
+      setError('Failed to fetch group data. Please try again.');
     } finally {
       setLoading(false);
     }
   };
+
+  // Helper function to determine if the user can create more groups
+  const canCreateMore = () => {
+    if (!capabilities) return false; // Don't show button until data is loaded
+
+    if (capabilities.userRole === 'admin') {
+      const hasAdminGroup = groups.some(g => g.grp_type === 'admin');
+      const hasOrgGroup = groups.some(g => g.grp_type === 'organisation');
+      // Return true (can create) if they are missing at least one of the two types
+      return !(hasAdminGroup && hasOrgGroup);
+    } 
+    
+    if (capabilities.userRole === 'organisation') {
+      // Return true (can create) if they have fewer than 4 groups
+      return groups.length < 4;
+    }
+    
+    return false; // Default case
+  };
+
 
   const handleViewDetails = (group) => {
     setSelectedGroup(group);
@@ -56,11 +81,11 @@ const ViewGroups = () => {
   const handleBack = () => {
     navigate(-1);
   };
-  // Filter and search logic
+  
   const filteredGroups = groups.filter(group => {
     const matchesSearch = group.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         group.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         group.contact_no.includes(searchTerm);
+                          group.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                          group.contact_no.includes(searchTerm);
     
     const matchesFilter = filterType === 'all' || group.grp_type === filterType;
     
@@ -91,10 +116,13 @@ const ViewGroups = () => {
       <div className="view-groups-header">
         <div className="header-content">
           <h1>Manage Groups</h1>
-          <button className="btn-create-new" onClick={handleCreateNew}>
-            <span className="plus-icon">+</span>
-            Create New Group
-          </button>
+          {/* 4. Conditionally render the "Create New Group" button */}
+          {canCreateMore() && (
+            <button className="btn-create-new" onClick={handleCreateNew}>
+              <span className="plus-icon">+</span>
+              Create New Group
+            </button>
+          )}
         </div>
         <div className="header-actions">
             <button className="btn-back" onClick={handleBack}>
@@ -113,7 +141,7 @@ const ViewGroups = () => {
           <div className="error-message">
             <span className="error-icon">!</span>
             {error}
-            <button className="retry-btn" onClick={fetchGroups}>Retry</button>
+            <button className="retry-btn" onClick={fetchData}>Retry</button>
           </div>
         )}
       </div>
@@ -147,10 +175,13 @@ const ViewGroups = () => {
           <h3>{groups.length}</h3>
           <p>Total Groups</p>
         </div>
-        <div className="stat-card">
-          <h3>{groups.filter(g => g.grp_type === 'admin').length}</h3>
-          <p>Admin Groups</p>
-        </div>
+        {/* 5. Conditionally render the "Admin Groups" stat card for admins only */}
+        {capabilities?.userRole === 'admin' && (
+          <div className="stat-card">
+            <h3>{groups.filter(g => g.grp_type === 'admin').length}</h3>
+            <p>Admin Groups</p>
+          </div>
+        )}
         <div className="stat-card">
           <h3>{groups.filter(g => g.grp_type === 'organisation').length}</h3>
           <p>Organisation Groups</p>
@@ -167,7 +198,8 @@ const ViewGroups = () => {
               : 'Get started by creating your first group.'
             }
           </p>
-          {!searchTerm && filterType === 'all' && (
+          {/* Also check canCreateMore() here for the "Create First Group" button */}
+          {!searchTerm && filterType === 'all' && canCreateMore() && (
             <button className="btn-create-first" onClick={handleCreateNew}>
               Create First Group
             </button>
@@ -251,6 +283,7 @@ const ViewGroups = () => {
                   </div>
                   <div className="detail-item">
                     <label>ID Proof:</label>
+                    {/* Assuming id_proof is a URL or filename */}
                     <span>{selectedGroup.id_proof}</span>
                   </div>
                   {selectedGroup.gst_no && (
@@ -317,17 +350,17 @@ const ViewGroups = () => {
                     <label>Group ID:</label>
                     <span className="group-id">{selectedGroup._id}</span>
                   </div>
-                  {selectedGroup.userId && (
+                   {selectedGroup.userId && (
                     <div className="detail-item">
-                      <label>Created By:</label>
-                      <span>
-                        {selectedGroup.userId.name ? 
-                          `${selectedGroup.userId.name} (${selectedGroup.userId.email})` : 
-                          selectedGroup.userId
-                        }
-                      </span>
-                    </div>
-                  )}
+                       <label>Created By:</label>
+                       <span>
+                         {typeof selectedGroup.userId === 'object' && selectedGroup.userId !== null ? 
+                           `${selectedGroup.userId.name} (${selectedGroup.userId.email})` : 
+                           selectedGroup.userId
+                         }
+                       </span>
+                     </div>
+                   )}
                 </div>
               </div>
             </div>
